@@ -6,6 +6,8 @@ import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
 
+const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
+
 const ui = new UI();
 const audio = new AudioEngine();
 
@@ -17,6 +19,7 @@ function pick() { return randomNoteInKey(keySet, range); }
 const game = new Game({
     pickNote: pick,
     onTarget: async (m) => {
+        ui.clearStatus();
         ui.highlightTarget(m);
         audio.playMidiNote(m, 0.35);
         if (midi.out) midi.sendNote(m, 0.8, 200); // light ping on external keyboard
@@ -73,7 +76,7 @@ function handleAnswer(midiNote) {
     if (ok == null) return;
     ui.flash(midiNote, ok);
     ui.updateHUD({ score: game.score, streak: game.streak, accuracy: (100*game.correct/game.attempts) });
-    setTimeout(()=> game.nextRound(), 600);
+    setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
 }
 
 boot();

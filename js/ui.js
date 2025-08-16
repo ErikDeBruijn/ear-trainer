@@ -28,9 +28,30 @@ export class UI {
     }
 
     flash(midi, ok) {
-        // simple text feedback for v0.1
-        this.statusEl.textContent = ok ? "✓ Correct" : "✗ Wrong";
-        this.statusEl.className = `status ${ok ? "success":"error"}`;
+        this.statusEl.textContent = ok ? "Correct!" : "Wrong";
+        this.statusEl.className = `status status-pill ${ok ? "ok" : "bad"}`;
+        this.statusEl.setAttribute("aria-live", "polite");
+    }
+
+    clearStatus() {
+        this.statusEl.textContent = "";
+        this.statusEl.className = "status";
+    }
+
+    flashScreen(kind = "ok") {
+      const el = document.getElementById("overlay-flash");
+      if (!el) return;
+      el.classList.remove("flash-ok", "flash-bad");
+      el.classList.add(kind === "ok" ? "flash-ok" : "flash-bad");
+      // auto-clear after short pulse
+      clearTimeout(this._flashTimer);
+      this._flashTimer = setTimeout(() => this.clearScreenFlash(), 140);
+    }
+
+    clearScreenFlash() {
+      const el = document.getElementById("overlay-flash");
+      if (!el) return;
+      el.classList.remove("flash-ok", "flash-bad");
     }
 
     updateHUD({score, streak, timer, accuracy}) {
