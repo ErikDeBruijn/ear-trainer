@@ -2,6 +2,9 @@
 
 Single-page ear trainer that plays a target note and checks your answer from a MIDI keyboard (or on-screen). Minimal, modular, ROLI-friendly.
 
+## Quick start
+[Try it live](https://erikdebruijn.github.io/ear-trainer/)
+
 ## Stack
 - Audio: [Tone.js] for prompts
 - MIDI I/O: [WebMidi.js] (MIDI in/out, MPE-safe by listening on all channels)
@@ -18,7 +21,6 @@ Single-page ear trainer that plays a target note and checks your answer from a M
 - On-screen keyboard input + visual flash on target
 - Score, streak, accuracy, local best in `localStorage`
 
-## Quick start
 ```bash
 # serve locally
 npm run dev
