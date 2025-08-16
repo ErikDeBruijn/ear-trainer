@@ -55,6 +55,13 @@ export class UI {
       el.classList.remove("flash-ok", "flash-bad");
     }
 
+    setKeyboardRange(min, maxExclusive) {
+      if (!this.kbd) return;
+      const keys = Math.max(1, (maxExclusive|0) - (min|0));
+      this.kbd.setAttribute("min", String(min));
+      this.kbd.setAttribute("keys", String(keys));
+    }
+
     updateHUD({score, streak, timer, accuracy}) {
         if (score != null) this.scoreEl.textContent = score;
         if (streak != null) this.streakEl.textContent = streak;

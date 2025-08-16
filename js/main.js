@@ -13,6 +13,7 @@ const audio = new AudioEngine();
 
 let keySet = parseKey(document.getElementById("key-select").value);
 let range = rangeToMidi(document.getElementById("range-select").value);
+ui.setKeyboardRange(range[0], range[1]);
 let wrongMode = "silent";
 
 function pick() { return randomNoteInKey(keySet, range); }
@@ -47,6 +48,7 @@ async function boot() {
     });
     document.getElementById("range-select").addEventListener("change", (e)=>{
         range = rangeToMidi(e.target.value);
+        ui.setKeyboardRange(range[0], range[1]);
     });
 
     // Wrong answer mode selector
@@ -66,7 +68,7 @@ async function boot() {
         const outSel = document.getElementById("midi-out");
         inputs.forEach(p => inSel.append(new Option(p.name, p.id)));
         outputs.forEach(p => outSel.append(new Option(p.name, p.id)));
-        inSel.addEventListener("change", e => {
+        inSel.addEventListener("change", (e) => {
             midi.setInById(e.target.value);
             midi.onNote(ev => { if (ev.type === "on") handleAnswer(ev.note); });
         });

@@ -12,7 +12,7 @@ export function parseKey(keyStr) {
 }
 
 export function rangeToMidi(rangeStr) {
-    // "C3-C5"
+    // "C3-C5" means C3 up to but not including C5 (upper bound exclusive)
     const [lo, hi] = rangeStr.split("-");
     return [toMidi(lo), toMidi(hi)];
 }
@@ -25,9 +25,9 @@ export function toMidi(pitch) {
     return 12 * (oct + 1) + k; // MIDI: C4 = 60
 }
 
-export function randomNoteInKey(keySet, [low, high]) {
+export function randomNoteInKey(keySet, [low, highExclusive]) {
     const candidates = [];
-    for (let m = low; m <= high; m++) {
+    for (let m = low; m < highExclusive; m++) {
         if (keySet.includes(m % 12)) candidates.push(m);
     }
     return candidates[Math.floor(Math.random() * candidates.length)];
