@@ -5,7 +5,7 @@ import { parseKey, rangeToMidi, randomNoteInKey } from "./theory.js";
 import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
-import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange } from "./lights.js";
+import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange, sendPrimaryGreen, sendPrimaryRed } from "./lights.js";
 
 const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
 
@@ -108,12 +108,16 @@ function handleAnswer(midiNote) {
     if (ok) {
       if (midi.out) midi.sendNote(midiNote, 0.9, 180); // success ping
       setKeyColor(midiNote, "green");
+      sendPrimaryGreen();
     } else {
       if (wrongMode === "play-pressed") {
         audio.playMidiNote(midiNote, 0.4);
       }
       setKeyColor(midiNote, "red");
+      sendPrimaryRed();
     }
+    // brief flash, then restore the scale coloring
+    setTimeout(() => setScaleColors(keySet, range[0], range[1]), 300);
     ui.updateHUD({ score: game.score, streak: game.streak, accuracy: (100*game.correct/game.attempts) });
     setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
 }
