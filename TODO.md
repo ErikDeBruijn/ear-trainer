@@ -10,7 +10,7 @@
 - [x] Package scripts for dev/serve/https
 
 ## 🧰 Fix/Polish
-- [ ] Visuals: success/fail glow on keys (CSS) instead of status text
+- [x] Visuals: success/fail glow on keys (CSS) instead of status text
 - [ ] Don't display the target note on the keyboard because it gives away the answer
 - [ ] Clamp range to valid white-key `min` for keyboard widget
 - [ ] Debounce double answers on overlapping note-ons

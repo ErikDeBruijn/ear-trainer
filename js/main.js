@@ -13,6 +13,7 @@ const audio = new AudioEngine();
 
 let keySet = parseKey(document.getElementById("key-select").value);
 let range = rangeToMidi(document.getElementById("range-select").value);
+let wrongMode = "silent";
 
 function pick() { return randomNoteInKey(keySet, range); }
 
@@ -48,6 +49,13 @@ async function boot() {
         range = rangeToMidi(e.target.value);
     });
 
+    // Wrong answer mode selector
+    const wrongSel = document.getElementById("wrong-mode");
+    if (wrongSel) {
+      wrongSel.addEventListener("change", e => { wrongMode = e.target.value; });
+      wrongMode = wrongSel.value || "silent";
+    }
+
     // Screen keyboard input
     ui.onScreenKey((m)=>handleAnswer(m));
 
@@ -75,6 +83,10 @@ function handleAnswer(midiNote) {
     const ok = game.answer(midiNote);
     if (ok == null) return;
     ui.flash(midiNote, ok);
+    ui.flashScreen(ok ? "ok" : "bad");
+    if (!ok && wrongMode === "play-pressed") {
+      audio.playMidiNote(midiNote, 0.4);
+    }
     ui.updateHUD({ score: game.score, streak: game.streak, accuracy: (100*game.correct/game.attempts) });
     setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
 }

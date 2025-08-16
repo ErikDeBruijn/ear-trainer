@@ -23,3 +23,11 @@ button.secondary { cursor:pointer; }
     .status.status-pill { animation: pop-in .18s ease-out; }
     @keyframes pop-in { from { transform: scale(.96); opacity:.0 } to { transform: scale(1); opacity:1 } }
 }
+
+/* --- Screen flash overlay --- */
+#overlay-flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: transparent; transition: opacity 120ms ease-out, background-color 120ms ease-out; }
+#overlay-flash.flash-ok { background: #ffffff; opacity: 0.9; }
+#overlay-flash.flash-bad { background: #ff2a2a; opacity: 0.35; }
+@media (prefers-reduced-motion: reduce) {
+  #overlay-flash { transition: none; }
+}

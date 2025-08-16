@@ -38,6 +38,12 @@
             <label>MIDI Out
                 <select id="midi-out"></select>
             </label>
+            <label>Wrong answer sound
+                <select id="wrong-mode">
+                    <option value="silent">Silent</option>
+                    <option value="play-pressed">Play pressed note</option>
+                </select>
+            </label>
             <button id="start" class="primary">Start</button>
             <button id="pause" class="secondary">Pause</button>
         </div>
@@ -57,6 +63,7 @@
         <div id="status" class="status"></div>
     </section>
 </div>
+<div id="overlay-flash" aria-hidden="true"></div>
 
 <!-- App -->
 <script type="module" src="js/main.js"></script>

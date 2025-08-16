@@ -10,6 +10,7 @@ export class UI {
     }
 
     onScreenKey(cb) {
+      if (!this.kbd) return;
       // webaudio-keyboard emits e.note as [state, midiNumber]; fire only on note-on
       this.kbd.addEventListener("change", e => {
         const pair = e.note || e.detail?.note;
