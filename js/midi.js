@@ -7,8 +7,8 @@ export const midi = {
     out: null,
 
     async enable() {
-        // Request Web MIDI (permission prompt appears over HTTPS)
-        await WebMidi.enable();
+        // Enable Web MIDI with SysEx (needed for per-key lighting on LUMI)
+        await WebMidi.enable({ sysex: true });
         this.enabled = true;
         this.inputs = WebMidi.inputs;
         this.outputs = WebMidi.outputs;
@@ -19,8 +19,14 @@ export const midi = {
         this.in = this.inputs.find(p => p.id === id) || null;
     },
 
+    // Restrict SysEx output to ROLI devices (e.g., LUMI); inputs can be any MIDI controller.
     setOutById(id) {
-        this.out = this.outputs.find(p => p.id === id) || null;
+        const dev = this.outputs.find(p => p.id === id) || null;
+        if (dev && dev.manufacturer && dev.manufacturer.match(/ROLI/i)) {
+            this.out = dev;
+        } else {
+            this.out = null;
+        }
     },
 
     onNote(cb) {
@@ -30,6 +36,7 @@ export const midi = {
         this.in.addListener("noteoff", "all", e => cb({ type: "off", note: e.note.number, name: e.note.identifier, velocity: e.velocity }));
     },
 
+    // Hints/tones can play on any selected output, regardless of manufacturer.
     sendNote(number = 60, velocity = 0.8, durationMs = 300) {
         if (!this.out) return;
         this.out.playNote(number, { rawVelocity: false, velocity, duration: durationMs });

@@ -5,7 +5,7 @@ import { parseKey, rangeToMidi, randomNoteInKey } from "./theory.js";
 import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
-import { bindMidiOut, setKeyColor, clearAllKeys } from "./lights.js";
+import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange } from "./lights.js";
 
 const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
 
@@ -15,6 +15,7 @@ const audio = new AudioEngine();
 let keySet = parseKey(document.getElementById("key-select").value);
 let range = rangeToMidi(document.getElementById("range-select").value);
 ui.setKeyboardRange(range[0], range[1]);
+setScaleColors(keySet, range[0], range[1]);
 let wrongMode = "silent";
 
 function pick() { return randomNoteInKey(keySet, range); }
@@ -44,10 +45,14 @@ async function boot() {
     // UI selects
     document.getElementById("key-select").addEventListener("change", (e)=>{
         keySet = parseKey(e.target.value);
+        clearRange(range[0], range[1]);
+        setScaleColors(keySet, range[0], range[1]);
     });
     document.getElementById("range-select").addEventListener("change", (e)=>{
         range = rangeToMidi(e.target.value);
         ui.setKeyboardRange(range[0], range[1]);
+        clearRange(range[0], range[1]);
+        setScaleColors(keySet, range[0], range[1]);
     });
 
     // Wrong answer mode selector
@@ -74,6 +79,10 @@ async function boot() {
         outSel.addEventListener("change", (e) => {
           midi.setOutById(e.target.value);
           bindMidiOut(midi.out);
+          if (midi.out) {
+            clearRange(range[0], range[1]);
+            setScaleColors(keySet, range[0], range[1]);
+          }
         });
         // auto-select first ports if present
         if (inputs[0]) { inSel.value = inputs[0].id; inSel.dispatchEvent(new Event("change")); }
@@ -81,6 +90,10 @@ async function boot() {
           outSel.value = outputs[0].id;
           outSel.dispatchEvent(new Event("change"));
           bindMidiOut(midi.out);
+          if (midi.out) {
+            clearRange(range[0], range[1]);
+            setScaleColors(keySet, range[0], range[1]);
+          }
         }
     } catch (e) {
         document.getElementById("status").textContent = `MIDI not available: ${e.message}`;

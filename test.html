@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<!-- ROLI LUMI LED SysEx Test Page
+        This page allows testing ROLI LUMI LED SysEx commands via Web MIDI API.
+
+Findings (2025-08-16 v0.1):
+
+Evolving Spec
+- Header: F0 00 21 10 (ROLI)
+- Observed on color changes: 77 43 (likely product/command family)
+- Candidate commands:
+  A) Global Key Color (palette byte): F0 00 21 10 77 43 00 20 00 00 PP F7
+  B) Root Key Color  (palette byte): F0 00 21 10 77 43 00 21 00 00 PP F7
+  C) Per-note RGB (guess):          F0 00 21 10 78 NN RR GG BB F7
+
+- Color encoding hypotheses:
+  • PP = palette index (examples seen: 6D, 6B)
+  • RR/GG/BB = 7-bit per channel (0x00..0x7F)
+
+Seed Captures
+- F0 00 21 10 77 43 00 20 00 00 6D F7
+- F0 00 21 10 77 43 00 20 00 00 6B F7
+- Longer frames observed containing: … 03 46 60 32 36 … (unmapped)
+
+Open Questions
+- Is the last byte payload (palette) or a checksum?
+- What addresses distinguish Global vs Root color?
+- Confirm any per-note format and note numbering.
+-->
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>ROLI LUMI – LED SysEx Test</title>
+    <style>
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Inter, Roboto, Arial;
+            margin: 24px;
+        }
+
+        fieldset {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        legend {
+            font-weight: 700;
+        }
+
+        button, select {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #888;
+            margin-right: 8px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        #log {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            white-space: pre-wrap;
+            background: #f7f7f7;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 100px;
+        }
+
+        .ok {
+            color: #0a7a3c;
+        }
+
+        .bad {
+            color: #b00020;
+        }
+
+        .muted {
+            color: #666;
+        }
+    </style>
+    <script src="https://unpkg.com/webmidi@latest/dist/iife/webmidi.iife.js"></script>
+</head>
+<body>
+<h1>ROLI LUMI – LED SysEx Test</h1>
+
+<fieldset>
+    <legend>1) Enable MIDI (with SysEx)</legend>
+    <div class="row">
+        <button id="enable">Enable MIDI</button>
+        <span id="status" class="muted">Not enabled</span>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>2) Select ROLI Output</legend>
+    <div class="row">
+        <label>Output
+            <select id="out"></select>
+        </label>
+        <button id="play">Play test tone (C4)</button>
+    </div>
+    <div class="muted">Tip: Only ROLI/LUMI outputs are used for lighting; any output can play tones.</div>
+</fieldset>
+
+<fieldset>
+    <legend>3) Send LED commands (SysEx stub)</legend>
+    <div class="row">
+        <button data-act="green">C4 Green</button>
+        <button data-act="red">C4 Red</button>
+        <button data-act="off">C4 Off</button>
+        <button data-act="scale">Paint C major (C3–C5)</button>
+        <button data-act="clear">Clear C3–C5</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+        <label>Raw SysEx (hex, spaces or commas):
+            <input id="sysex-hex" style="width:520px" placeholder="f0 00 21 10 … f7"/>
+        </label>
+        <button id="send-sysex">Send SysEx</button>
+        <button id="id-req">Identity Request</button>
+    </div>
+    <div class="muted">Tip: Use MIDI Monitor (macOS) → Preferences → Spy on output to destinations, select your LUMI
+        port, then poke its official app to capture real LED SysEx.
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>4) Captured presets (replay exact SysEx)</legend>
+    <div class="row">
+        <label style="min-width:160px">Preset 1 label
+            <input id="p1-label" placeholder="Global Key Color (example)"/>
+        </label>
+        <label>Preset 1 SysEx
+            <input id="p1-hex" style="width:480px" placeholder="f0 00 21 10 77 43 00 20 00 00 6d f7"/>
+        </label>
+        <button id="p1-send">Send</button>
+        <button id="p1-save">Save</button>
+    </div>
+    <div class="row">
+        <label style="min-width:160px">Preset 2 label
+            <input id="p2-label" placeholder="Root Key Color (example)"/>
+        </label>
+        <label>Preset 2 SysEx
+            <input id="p2-hex" style="width:480px" placeholder="f0 … f7"/>
+        </label>
+        <button id="p2-send">Send</button>
+        <button id="p2-save">Save</button>
+    </div>
+    <div class="row">
+        <label style="min-width:160px">Preset 3 label
+            <input id="p3-label" placeholder="Your custom"/>
+        </label>
+        <label>Preset 3 SysEx
+            <input id="p3-hex" style="width:480px" placeholder="f0 … f7"/>
+        </label>
+        <button id="p3-send">Send</button>
+        <button id="p3-save">Save</button>
+    </div>
+    <div class="muted">These presets persist locally (browser localStorage). Paste captured SysEx from LUMI Dashboard
+        here and replay to verify.
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Log</legend>
+    <div id="log"></div>
+</fieldset>
+
+<fieldset>
+    <legend>5) Capture incoming SysEx (no extra tools)</legend>
+    <div class="row">
+        <label>Input
+            <select id="in"></select>
+        </label>
+        <button id="cap-start">Start capture</button>
+        <button id="cap-stop" disabled>Stop</button>
+        <label><input type="checkbox" id="cap-all" checked/> Capture from all inputs</label>
+        <label><input type="checkbox" id="cap-thru" checked/> Thru to selected output</label>
+        <label><input type="checkbox" id="filter-sysex" checked/> SysEx only</label>
+        <label><input type="checkbox" id="show-log" checked/> Show log</label>
+    </div>
+    <div class="muted">
+        Browsers can only see incoming MIDI from inputs. To spy on what another app sends to your LUMI,
+        route that app to a virtual input (IAC Driver) and capture that here. With <b>Thru</b> enabled,
+        messages are forwarded to the selected output.
+    </div>
+    <div class="muted">
+        macOS steps: Audio MIDI Setup → Window → Show MIDI Studio → double-click <b>IAC Driver</b> → Enable → add a port
+        (e.g., “Spy”).
+        In ROLI Dashboard, set output = “Spy”. Then here, choose input = “Spy” and keep <b>Thru</b> on to forward to
+        LUMI.
+    </div>
+</fieldset>
+
+<script>
+    (() => {
+        const NOTE_C4 = 60; // middle C
+        const RANGE_LOW = 48; // C3
+        const RANGE_HIGH_EXC = 72; // C5 (exclusive)
+
+        const COLORS = {
+            green: [0, 127, 0],
+            red: [127, 0, 0],
+            white: [127, 127, 127],
+            darkred: [64, 0, 0],
+            off: [0, 0, 0]
+        };
+
+        const statusEl = document.getElementById('status');
+        const outSel = document.getElementById('out');
+        const logEl = document.getElementById('log');
+        const inSel = document.getElementById('in');
+        let out = null;
+        let capturing = false;
+        let stopCaptureFn = null;
+
+        const showLogEl = () => document.getElementById('show-log');
+        const filterSysexEl = () => document.getElementById('filter-sysex');
+        function shouldLog() { return !!showLogEl()?.checked; }
+        function sysexOnly() { return !!filterSysexEl()?.checked; }
+
+        function log(msg, cls) {
+            if (!shouldLog()) return;
+            const line = document.createElement('div');
+            if (cls) line.className = cls;
+            line.textContent = msg;
+            logEl.appendChild(line);
+        }
+
+        function refreshStatus() {
+            const enabled = WebMidi.enabled;
+            const sysex = WebMidi.sysexEnabled;
+            statusEl.textContent = `MIDI: ${enabled ? 'OK' : 'OFF'} · SysEx: ${sysex ? 'OK' : 'DENIED'}`;
+            statusEl.className = sysex ? 'ok' : 'bad';
+        }
+
+        async function enableMidi() {
+            try {
+                if (WebMidi.enabled && !WebMidi.sysexEnabled) await WebMidi.disable();
+                await WebMidi.enable({sysex: true});
+                refreshStatus();
+                // Populate outputs
+                outSel.innerHTML = '';
+                WebMidi.outputs.forEach(o => {
+                    const opt = document.createElement('option');
+                    opt.value = o.id;
+                    opt.textContent = `${o.name}${/roli|lumi/i.test(o.name) ? ' (ROLI)' : ''}`;
+                    outSel.appendChild(opt);
+                });
+                if (WebMidi.outputs[0]) {
+                    outSel.value = WebMidi.outputs[0].id;
+                    out = WebMidi.outputs[0];
+                }
+                refreshInputs();
+
+                // Auto-arm capture with defaults (all inputs, thru on, sysex-only on)
+                document.getElementById('cap-all').checked = true;
+                document.getElementById('cap-thru').checked = true;
+                document.getElementById('filter-sysex').checked = true;
+                document.getElementById('show-log').checked = true;
+                startCapture();
+
+                if (WebMidi.inputs[0]) {
+                    inSel.value = WebMidi.inputs[0].id;
+                }
+                log(`Enabled: enabled=${WebMidi.enabled} sysex=${WebMidi.sysexEnabled}`);
+            } catch (e) {
+                log(`Enable failed: ${e.message}`, 'bad');
+            }
+        }
+
+        function refreshInputs() {
+            inSel.innerHTML = '';
+            WebMidi.inputs.forEach(i => {
+                const opt = document.createElement('option');
+                opt.value = i.id;
+                opt.textContent = i.name;
+                inSel.appendChild(opt);
+            });
+        }
+
+        function formatBytes(data) {
+            return Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        }
+
+        function onCapturedBytes(srcName, bytes) {
+            if (!Array.isArray(bytes)) bytes = Array.from(bytes || []);
+            if (sysexOnly() && bytes[0] !== 0xF0) return; // filter
+            log(`[IN ${srcName}] ${formatBytes(bytes)}`);
+            const thru = document.getElementById('cap-thru').checked;
+            if (thru && out) {
+                try { out.send(bytes); } catch (e) { log(`Thru failed: ${e.message}`, 'bad'); }
+            }
+        }
+
+        function setOutputById(id) {
+            out = WebMidi.outputs.find(o => o.id === id) || null;
+            log(`Selected output: ${out ? out.name : 'none'}`);
+        }
+
+        function sendTestTone(note = NOTE_C4) {
+            if (!out) return log('No output selected', 'bad');
+            try {
+                out.playNote(note, {duration: 300, velocity: 0.9});
+            } catch (e) {
+                log(`Tone failed: ${e.message}`, 'bad');
+            }
+        }
+
+        function sendLumiColor(note, rgb) {
+            if (!out) return log('No output selected', 'bad');
+            if (!/roli|lumi/i.test(out.name)) return log('Output is not ROLI/LUMI; skipping LED', 'bad');
+            if (!WebMidi.sysexEnabled) return log('SysEx is DENIED; cannot send LED SysEx', 'bad');
+            const sysex = [0xF0, 0x00, 0x21, 0x10, 0x78, (note & 0x7F), (rgb[0] & 0x7F), (rgb[1] & 0x7F), (rgb[2] & 0x7F), 0xF7];
+            try {
+                out.send(sysex);
+                log(`SysEx → ${sysex.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+            } catch (e) {
+                log(`SysEx failed: ${e.name}: ${e.message}`, 'bad');
+            }
+        }
+
+        function parseHexInput(str) {
+            return str
+                .trim()
+                .replace(/[,\n\r\t]+/g, ' ')
+                .split(' ')
+                .filter(Boolean)
+                .map(x => parseInt(x, 16) & 0xFF);
+        }
+
+        function sendRawSysex(bytes) {
+            if (!out) return log('No output selected', 'bad');
+            if (!WebMidi.sysexEnabled) return log('SysEx is DENIED; cannot send raw SysEx', 'bad');
+            if (!bytes || bytes[0] !== 0xF0 || bytes[bytes.length - 1] !== 0xF7) {
+                return log('SysEx must start with F0 and end with F7', 'bad');
+            }
+            try {
+                out.send(bytes);
+                log(`SysEx → ${bytes.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+            } catch (e) {
+                log(`SysEx failed: ${e.name}: ${e.message}`, 'bad');
+            }
+        }
+
+        function setScaleColorsCmajor() {
+            for (let m = RANGE_LOW; m < RANGE_HIGH_EXC; m++) {
+                const pitchClass = m % 12; // C major = 0,2,4,5,7,9,11
+                const inScale = [0, 2, 4, 5, 7, 9, 11].includes(pitchClass);
+                sendLumiColor(m, inScale ? COLORS.white : COLORS.darkred);
+            }
+        }
+
+        async function startCapture() {
+            if (capturing) return;
+            capturing = true;
+            document.getElementById('cap-start').disabled = true;
+            document.getElementById('cap-stop').disabled = false;
+            try {
+                const access = await navigator.requestMIDIAccess({ sysex: true });
+                const all = document.getElementById('cap-all').checked;
+                const selectedId = inSel.value;
+                const inputs = [];
+                access.inputs.forEach(i => inputs.push(i));
+                const filtered = all ? inputs : inputs.filter(i => i.id === selectedId);
+                const oldHandlers = [];
+                filtered.forEach(inp => {
+                    const prev = inp.onmidimessage;
+                    oldHandlers.push(() => { inp.onmidimessage = prev || null; });
+                    inp.onmidimessage = (ev) => {
+                        const data = ev.data;
+                        if (data && data.length) onCapturedBytes(inp.name, data);
+                        if (typeof prev === 'function') { try { prev(ev); } catch {} }
+                    };
+                });
+                stopCaptureFn = () => {
+                    oldHandlers.forEach(fn => fn());
+                    capturing = false;
+                    document.getElementById('cap-start').disabled = false;
+                    document.getElementById('cap-stop').disabled = true;
+                };
+                log('Capture started (native MIDI).');
+            } catch (e) {
+                log(`Failed to start capture: ${e.message}`, 'bad');
+                capturing = false;
+                document.getElementById('cap-start').disabled = false;
+                document.getElementById('cap-stop').disabled = true;
+            }
+        }
+
+        function stopCapture() {
+            if (typeof stopCaptureFn === 'function') stopCaptureFn();
+            stopCaptureFn = null;
+        }
+
+        document.getElementById('enable').addEventListener('click', enableMidi);
+        outSel.addEventListener('change', (e) => setOutputById(e.target.value));
+        document.getElementById('play').addEventListener('click', () => sendTestTone());
+
+        document.querySelector('[data-act="green"]').addEventListener('click', () => sendLumiColor(NOTE_C4, COLORS.green));
+        document.querySelector('[data-act="red"]').addEventListener('click', () => sendLumiColor(NOTE_C4, COLORS.red));
+        document.querySelector('[data-act="off"]').addEventListener('click', () => sendLumiColor(NOTE_C4, COLORS.off));
+        document.querySelector('[data-act="scale"]').addEventListener('click', setScaleColorsCmajor);
+        document.querySelector('[data-act="clear"]').addEventListener('click', () => {
+            for (let m = RANGE_LOW; m < RANGE_HIGH_EXC; m++) sendLumiColor(m, COLORS.off);
+        });
+
+        document.getElementById('send-sysex').addEventListener('click', () => {
+            const val = document.getElementById('sysex-hex').value;
+            const bytes = parseHexInput(val);
+            sendRawSysex(bytes);
+        });
+
+        document.getElementById('id-req').addEventListener('click', () => {
+            // Universal Identity Request: F0 7E 7F 06 01 F7
+            sendRawSysex([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]);
+            log('Sent Universal Identity Request (device should respond on its MIDI IN → check a monitor bound to the device input).');
+        });
+
+        document.getElementById('cap-start').addEventListener('click', startCapture);
+        document.getElementById('cap-stop').addEventListener('click', stopCapture);
+        inSel.addEventListener('change', () => log(`Selected input: ${inSel.options[inSel.selectedIndex]?.text || '—'}`));
+
+        // --- Presets (localStorage) ---
+        const PKEY = 'lumi_sysex_presets_v1';
+
+        function loadPresets() {
+            try {
+                return JSON.parse(localStorage.getItem(PKEY)) || {};
+            } catch {
+                return {};
+            }
+        }
+
+        function savePresets(p) {
+            localStorage.setItem(PKEY, JSON.stringify(p));
+        }
+
+        function initPresetsUI() {
+            const p = loadPresets();
+            const p1l = document.getElementById('p1-label');
+            const p1h = document.getElementById('p1-hex');
+            const p2l = document.getElementById('p2-label');
+            const p2h = document.getElementById('p2-hex');
+            const p3l = document.getElementById('p3-label');
+            const p3h = document.getElementById('p3-hex');
+            // defaults
+            if (!p.p1) p.p1 = {label: 'Global Key Color (example)', hex: 'f0 00 21 10 77 43 00 20 00 00 6d f7'};
+            p1l.value = p.p1?.label || '';
+            p1h.value = p.p1?.hex || '';
+            p2l.value = p.p2?.label || '';
+            p2h.value = p.p2?.hex || '';
+            p3l.value = p.p3?.label || '';
+            p3h.value = p.p3?.hex || '';
+
+            document.getElementById('p1-send').addEventListener('click', () => sendRawSysex(parseHexInput(p1h.value)));
+            document.getElementById('p2-send').addEventListener('click', () => sendRawSysex(parseHexInput(p2h.value)));
+            document.getElementById('p3-send').addEventListener('click', () => sendRawSysex(parseHexInput(p3h.value)));
+
+            document.getElementById('p1-save').addEventListener('click', () => {
+                p.p1 = {label: p1l.value, hex: p1h.value};
+                savePresets(p);
+                log('Saved Preset 1');
+            });
+            document.getElementById('p2-save').addEventListener('click', () => {
+                p.p2 = {label: p2l.value, hex: p2h.value};
+                savePresets(p);
+                log('Saved Preset 2');
+            });
+            document.getElementById('p3-save').addEventListener('click', () => {
+                p.p3 = {label: p3l.value, hex: p3h.value};
+                savePresets(p);
+                log('Saved Preset 3');
+            });
+        }
+
+        // init presets UI now
+        initPresetsUI();
+    })();
+</script>
+</body>
+</html>
