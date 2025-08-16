@@ -5,6 +5,7 @@ import { parseKey, rangeToMidi, randomNoteInKey } from "./theory.js";
 import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
+import { bindMidiOut, setKeyColor, clearAllKeys } from "./lights.js";
 
 const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
 
@@ -70,10 +71,17 @@ async function boot() {
             midi.setInById(e.target.value);
             midi.onNote(ev => { if (ev.type === "on") handleAnswer(ev.note); });
         });
-        outSel.addEventListener("change", e => midi.setOutById(e.target.value));
+        outSel.addEventListener("change", (e) => {
+          midi.setOutById(e.target.value);
+          bindMidiOut(midi.out);
+        });
         // auto-select first ports if present
         if (inputs[0]) { inSel.value = inputs[0].id; inSel.dispatchEvent(new Event("change")); }
-        if (outputs[0]) { outSel.value = outputs[0].id; outSel.dispatchEvent(new Event("change")); }
+        if (outputs[0]) {
+          outSel.value = outputs[0].id;
+          outSel.dispatchEvent(new Event("change"));
+          bindMidiOut(midi.out);
+        }
     } catch (e) {
         document.getElementById("status").textContent = `MIDI not available: ${e.message}`;
     }
@@ -84,8 +92,14 @@ function handleAnswer(midiNote) {
     if (ok == null) return;
     ui.flash(midiNote, ok);
     ui.flashScreen(ok ? "ok" : "bad");
-    if (!ok && wrongMode === "play-pressed") {
-      audio.playMidiNote(midiNote, 0.4);
+    if (ok) {
+      if (midi.out) midi.sendNote(midiNote, 0.9, 180); // success ping
+      setKeyColor(midiNote, "green");
+    } else {
+      if (wrongMode === "play-pressed") {
+        audio.playMidiNote(midiNote, 0.4);
+      }
+      setKeyColor(midiNote, "red");
     }
     ui.updateHUD({ score: game.score, streak: game.streak, accuracy: (100*game.correct/game.attempts) });
     setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
