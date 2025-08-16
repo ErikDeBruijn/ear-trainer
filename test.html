@@ -47,7 +47,6 @@ Open Questions
         legend {
             font-weight: 700;
         }
-
         button, select {
             padding: 8px 10px;
             border-radius: 8px;
@@ -68,8 +67,22 @@ Open Questions
             background: #f7f7f7;
             border: 1px solid #ddd;
             border-radius: 8px;
-            padding: 10px;
+            padding: 0;
             min-height: 100px;
+            max-height: 45vh;      /* keep it on screen */
+            overflow-y: auto;      /* scroll instead of growing */
+            position: relative;
+        }
+        #log .toolbar {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(#fafafa, #f2f2f2);
+            border-bottom: 1px solid #ddd;
+            padding: 6px 8px;
+            z-index: 1;
+        }
+        #log-list > div { /* each log line */
+            padding: 2px 8px;
         }
 
         .ok {
@@ -83,13 +96,15 @@ Open Questions
         .muted {
             color: #666;
         }
+        .warn { color: #8a3b00; }
+        .okbadge { color: #0a7a3c; font-weight: 600; }
     </style>
     <script src="https://unpkg.com/webmidi@latest/dist/iife/webmidi.iife.js"></script>
 </head>
 <body>
 <h1>ROLI LUMI – LED SysEx Test</h1>
 
-<fieldset>
+<fieldset id="fs-enable">
     <legend>1) Enable MIDI (with SysEx)</legend>
     <div class="row">
         <button id="enable">Enable MIDI</button>
@@ -104,16 +119,17 @@ Open Questions
             <select id="out"></select>
         </label>
         <button id="play">Play test tone (C4)</button>
+        <span id="out-hint" class="muted"></span>
+        <button id="bridge-spy" title="Input=Spy/IAC, Thru=ON, Output=LUMI">Bridge Spy → LUMI</button>
     </div>
     <div class="muted">Tip: Only ROLI/LUMI outputs are used for lighting; any output can play tones.</div>
 </fieldset>
 
 <fieldset>
-    <legend>3) Send LED commands (SysEx stub)</legend>
+    <legend>3) Send LED commands</legend>
     <div class="row">
-        <button data-act="green">C4 Green</button>
-        <button data-act="red">C4 Red</button>
-        <button data-act="off">C4 Off</button>
+        <button data-act="global-red">Global: Red</button>
+        <button data-act="global-green">Global: Green</button>
         <button data-act="scale">Paint C major (C3–C5)</button>
         <button data-act="clear">Clear C3–C5</button>
     </div>
@@ -122,11 +138,8 @@ Open Questions
             <input id="sysex-hex" style="width:520px" placeholder="f0 00 21 10 … f7"/>
         </label>
         <button id="send-sysex">Send SysEx</button>
-        <button id="id-req">Identity Request</button>
     </div>
-    <div class="muted">Tip: Use MIDI Monitor (macOS) → Preferences → Spy on output to destinations, select your LUMI
-        port, then poke its official app to capture real LED SysEx.
-    </div>
+    <div class="muted">Tip: Capture LED SysEx by poking the official app and copying the output. Paste here to replay.</div>
 </fieldset>
 
 <fieldset>
@@ -168,7 +181,20 @@ Open Questions
 
 <fieldset>
     <legend>Log</legend>
-    <div id="log"></div>
+    <div id="log">
+        <div id="log-toolbar" class="toolbar row">
+            <button id="clear-log">Clear log</button>
+            <span class="muted">Newest first. Inline color swatches when a color payload is detected.</span>
+        </div>
+        <div id="log-list"></div>
+    </div>
+</fieldset>
+<fieldset>
+    <legend>Misc</legend>
+    <div class="row">
+        <button id="id-req">Send Universal Identity Request</button>
+        <span class="muted">(Device should answer on its input port; check an external monitor if needed.)</span>
+    </div>
 </fieldset>
 
 <fieldset>
@@ -180,20 +206,12 @@ Open Questions
         <button id="cap-start">Start capture</button>
         <button id="cap-stop" disabled>Stop</button>
         <label><input type="checkbox" id="cap-all" checked/> Capture from all inputs</label>
-        <label><input type="checkbox" id="cap-thru" checked/> Thru to selected output</label>
+        <label><input type="checkbox" id="cap-thru"/> Thru to selected output</label>
         <label><input type="checkbox" id="filter-sysex" checked/> SysEx only</label>
         <label><input type="checkbox" id="show-log" checked/> Show log</label>
     </div>
     <div class="muted">
-        Browsers can only see incoming MIDI from inputs. To spy on what another app sends to your LUMI,
-        route that app to a virtual input (IAC Driver) and capture that here. With <b>Thru</b> enabled,
-        messages are forwarded to the selected output.
-    </div>
-    <div class="muted">
-        macOS steps: Audio MIDI Setup → Window → Show MIDI Studio → double-click <b>IAC Driver</b> → Enable → add a port
-        (e.g., “Spy”).
-        In ROLI Dashboard, set output = “Spy”. Then here, choose input = “Spy” and keep <b>Thru</b> on to forward to
-        LUMI.
+        To capture what another app sends to LUMI, route that app to a virtual input (macOS IAC). Select that input here and click <b>Start capture</b>. <b>Thru</b> is OFF by default to avoid loops; enable only if you want to forward captured bytes to the selected output.
     </div>
 </fieldset>
 
@@ -214,10 +232,17 @@ Open Questions
         const statusEl = document.getElementById('status');
         const outSel = document.getElementById('out');
         const logEl = document.getElementById('log');
+        const logListEl = document.getElementById('log-list');
         const inSel = document.getElementById('in');
         let out = null;
         let capturing = false;
         let stopCaptureFn = null;
+
+        // Log behavior controls
+        const MAX_LOG_LINES = 400;   // truncate really old messages
+        const DEDUP_MAX = 1000;      // cap dedup memory
+        const seenSet = new Set();
+        const seenQueue = [];
 
         const showLogEl = () => document.getElementById('show-log');
         const filterSysexEl = () => document.getElementById('filter-sysex');
@@ -226,10 +251,24 @@ Open Questions
 
         function log(msg, cls) {
             if (!shouldLog()) return;
+            if (seenSet.has(msg)) return;
+            seenSet.add(msg);
+            seenQueue.push(msg);
+            if (seenQueue.length > DEDUP_MAX) {
+                const oldest = seenQueue.shift();
+                seenSet.delete(oldest);
+            }
             const line = document.createElement('div');
             if (cls) line.className = cls;
             line.textContent = msg;
-            logEl.appendChild(line);
+            if (logListEl.firstChild) {
+                logListEl.insertBefore(line, logListEl.firstChild);
+            } else {
+                logListEl.appendChild(line);
+            }
+            while (logListEl.childElementCount > MAX_LOG_LINES) {
+                logListEl.removeChild(logListEl.lastChild);
+            }
         }
 
         function refreshStatus() {
@@ -237,6 +276,8 @@ Open Questions
             const sysex = WebMidi.sysexEnabled;
             statusEl.textContent = `MIDI: ${enabled ? 'OK' : 'OFF'} · SysEx: ${sysex ? 'OK' : 'DENIED'}`;
             statusEl.className = sysex ? 'ok' : 'bad';
+            const fs = document.getElementById('fs-enable');
+            if (fs) fs.style.display = (enabled && sysex) ? 'none' : '';
         }
 
         async function enableMidi() {
@@ -258,9 +299,9 @@ Open Questions
                 }
                 refreshInputs();
 
-                // Auto-arm capture with defaults (all inputs, thru on, sysex-only on)
+                // Auto-arm capture with defaults (all inputs, thru OFF, sysex-only on)
                 document.getElementById('cap-all').checked = true;
-                document.getElementById('cap-thru').checked = true;
+                document.getElementById('cap-thru').checked = false;
                 document.getElementById('filter-sysex').checked = true;
                 document.getElementById('show-log').checked = true;
                 startCapture();
@@ -269,6 +310,7 @@ Open Questions
                     inSel.value = WebMidi.inputs[0].id;
                 }
                 log(`Enabled: enabled=${WebMidi.enabled} sysex=${WebMidi.sysexEnabled}`);
+                logEl.scrollTop = 0; // show newest (we prepend)
             } catch (e) {
                 log(`Enable failed: ${e.message}`, 'bad');
             }
@@ -284,23 +326,137 @@ Open Questions
             });
         }
 
+        function looksLikeLumiName(name) { return /\b(roli|lumi)\b/i.test(name || ''); }
+        function looksLikeSpyName(name) { return /(iac|spy|dashboard|monitor)/i.test(name || ''); }
+        function refreshOutHint() {
+            const name = out?.name || '';
+            const el = document.getElementById('out-hint');
+            if (!el) return;
+            if (!name) { el.textContent = 'No output selected'; el.className = 'warn'; return; }
+            if (looksLikeLumiName(name)) { el.textContent = `→ Output: ${name}`; el.className = 'okbadge'; }
+            else { el.textContent = `Output “${name}” does not look like a LUMI/ROLI port`; el.className = 'warn'; }
+        }
+
         function formatBytes(data) {
             return Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        }
+
+        function decode14(hi, lo) {
+            // 7-bit safe pair → 14-bit value
+            return ((hi & 0x7F) << 7) | (lo & 0x7F);
+        }
+        function clamp255(x) {
+            return Math.max(0, Math.min(255, x|0));
+        }
+        function encode14(val14) {
+            const v = Math.max(0, Math.min(16383, val14|0));
+            return [(v >> 7) & 0x7F, v & 0x7F];
+        }
+        function rgb255To14Pairs(rgb) {
+            const r14 = Math.round((rgb[0] / 255) * 16383);
+            const g14 = Math.round((rgb[1] / 255) * 16383);
+            const b14 = Math.round((rgb[2] / 255) * 16383);
+            return [...encode14(r14), ...encode14(g14), ...encode14(b14)];
+        }
+        function sendGlobalColorRGB(rgb) {
+            if (!out) return log('No output selected', 'bad');
+            if (!/roli|lumi/i.test(out.name)) return log('Output is not ROLI/LUMI; skipping LED', 'bad');
+            if (!WebMidi.sysexEnabled) return log('SysEx is DENIED; cannot send LED SysEx', 'bad');
+            const pairs = rgb255To14Pairs(rgb);
+            const msg = [0xF0,0x00,0x21,0x10,0x77,0x43,0x00,0x00,0x00,0x00,0x00,0x03,0x44, ...pairs, 0xF7];
+            try {
+                out.send(msg);
+                const rgbApprox = tryExtractRGB(msg);
+                logWithSwatch(`SysEx → ${msg.map(b=>b.toString(16).padStart(2,'0')).join(' ')}`, rgbApprox || rgb);
+            } catch (e) {
+                log(`SysEx failed: ${e.name}: ${e.message}`, 'bad');
+            }
+        }
+        function rgbFromGlobalColorPayload(bytes) {
+            // Look for ... 03 44 [Rhi Rlo Ghi Glo Bhi Blo] ... F7
+            for (let i = 0; i < bytes.length - 8; i++) {
+                if (bytes[i] === 0x03 && bytes[i+1] === 0x44) {
+                    const r = decode14(bytes[i+2], bytes[i+3]);
+                    const g = decode14(bytes[i+4], bytes[i+5]);
+                    const b = decode14(bytes[i+6], bytes[i+7]);
+                    // scale 0..16383 → 0..255
+                    return [
+                        clamp255(Math.round((r / 16383) * 255)),
+                        clamp255(Math.round((g / 16383) * 255)),
+                        clamp255(Math.round((b / 16383) * 255)),
+                    ];
+                }
+            }
+            return null;
+        }
+        function rgbFromPerNote78(bytes) {
+            // F0 00 21 10 78 NN RR GG BB F7
+            if (bytes.length >= 10 && bytes[0] === 0xF0 && bytes[4] === 0x78 && bytes[bytes.length-1] === 0xF7) {
+                const rr = bytes[6] & 0x7F, gg = bytes[7] & 0x7F, bb = bytes[8] & 0x7F;
+                return [
+                    clamp255(Math.round(rr / 127 * 255)),
+                    clamp255(Math.round(gg / 127 * 255)),
+                    clamp255(Math.round(bb / 127 * 255)),
+                ];
+            }
+            return null;
+        }
+        function tryExtractRGB(bytes) {
+            return rgbFromGlobalColorPayload(bytes) || rgbFromPerNote78(bytes);
+        }
+        function logWithSwatch(msg, rgb, cls) {
+            if (!shouldLog()) return;
+            if (seenSet.has(msg)) return;
+            seenSet.add(msg);
+            seenQueue.push(msg);
+            if (seenQueue.length > DEDUP_MAX) {
+                const oldest = seenQueue.shift();
+                seenSet.delete(oldest);
+            }
+            const line = document.createElement('div');
+            if (cls) line.className = cls;
+            const tt = document.createElement('span');
+            tt.textContent = msg + ' ';
+            line.appendChild(tt);
+            if (rgb) {
+                const [r,g,b] = rgb;
+                const chip = document.createElement('span');
+                chip.title = `rgb(${r},${g},${b})`;
+                chip.style.display = 'inline-block';
+                chip.style.width = '14px';
+                chip.style.height = '14px';
+                chip.style.border = '1px solid #999';
+                chip.style.verticalAlign = 'middle';
+                chip.style.background = `rgb(${r},${g},${b})`;
+                chip.style.marginLeft = '6px';
+                chip.style.borderRadius = '3px';
+                line.appendChild(chip);
+            }
+            if (logListEl.firstChild) logListEl.insertBefore(line, logListEl.firstChild); else logListEl.appendChild(line);
+            while (logListEl.childElementCount > MAX_LOG_LINES) logListEl.removeChild(logListEl.lastChild);
         }
 
         function onCapturedBytes(srcName, bytes) {
             if (!Array.isArray(bytes)) bytes = Array.from(bytes || []);
             if (sysexOnly() && bytes[0] !== 0xF0) return; // filter
-            log(`[IN ${srcName}] ${formatBytes(bytes)}`);
+            const hex = formatBytes(bytes);
+            const rgb = tryExtractRGB(bytes);
+            logWithSwatch(`[IN ${srcName}] ${hex}`, rgb);
             const thru = document.getElementById('cap-thru').checked;
-            if (thru && out) {
-                try { out.send(bytes); } catch (e) { log(`Thru failed: ${e.message}`, 'bad'); }
+            const outName = out?.name || '';
+            if (thru && out && srcName) {
+                // Avoid echo loops: only block if the src already matches our output device name
+                const sameDevice = out.name && srcName && srcName.toLowerCase() === out.name.toLowerCase();
+                if (!sameDevice) {
+                    try { out.send(bytes); } catch (e) { log(`Thru failed: ${e.message}`, 'bad'); }
+                }
             }
         }
 
         function setOutputById(id) {
             out = WebMidi.outputs.find(o => o.id === id) || null;
             log(`Selected output: ${out ? out.name : 'none'}`);
+            refreshOutHint();
         }
 
         function sendTestTone(note = NOTE_C4) {
@@ -326,23 +482,40 @@ Open Questions
         }
 
         function parseHexInput(str) {
-            return str
-                .trim()
-                .replace(/[,\n\r\t]+/g, ' ')
-                .split(' ')
-                .filter(Boolean)
-                .map(x => parseInt(x, 16) & 0xFF);
+            // Accept spaces, commas, newlines, 0x prefixes, mixed case, even concatenated bytes.
+            // Strategy: split on non-hex to tokens; for each token, strip 0x and break into pairs.
+            const tokens = str.replace(/[^0-9a-fA-Fx]/g, ' ').trim().split(/\s+/).filter(Boolean);
+            const bytes = [];
+            for (let tok of tokens) {
+                tok = tok.replace(/^0x/i, '');
+                if (!tok) continue;
+                if (tok.length % 2 === 1) tok = '0' + tok; // pad odd nibble
+                for (let i = 0; i < tok.length; i += 2) {
+                    const byte = parseInt(tok.slice(i, i + 2), 16);
+                    if (Number.isFinite(byte)) bytes.push(byte & 0xFF);
+                }
+            }
+            return bytes;
         }
 
-        function sendRawSysex(bytes) {
-            if (!out) return log('No output selected', 'bad');
-            if (!WebMidi.sysexEnabled) return log('SysEx is DENIED; cannot send raw SysEx', 'bad');
+        async function sendRawSysex(bytes) {
             if (!bytes || bytes[0] !== 0xF0 || bytes[bytes.length - 1] !== 0xF7) {
                 return log('SysEx must start with F0 and end with F7', 'bad');
             }
             try {
+                if (!WebMidi.enabled) { await WebMidi.enable({sysex:true}); refreshStatus(); }
+            } catch (e) { return log(`SysEx aborted: SysEx not enabled (${e.message})`, 'bad'); }
+            if (!out) {
+                const roli = WebMidi.outputs.find(o => /roli|lumi/i.test(o.name));
+                if (roli) { out = roli; outSel.value = roli.id; log(`Auto-selected output: ${roli.name}`); }
+            }
+            if (!out) return log('No output selected (ROLI/LUMI not found).', 'bad');
+            try {
                 out.send(bytes);
-                log(`SysEx → ${bytes.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+                log(`Sent to: ${out.name}`);
+                const hex = bytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
+                const rgb = tryExtractRGB(bytes);
+                logWithSwatch(`SysEx → ${hex}`, rgb);
             } catch (e) {
                 log(`SysEx failed: ${e.name}: ${e.message}`, 'bad');
             }
@@ -357,6 +530,14 @@ Open Questions
         }
 
         async function startCapture() {
+            // Ensure WebMidi is enabled and a ROLI/LUMI output is selected
+            if (!WebMidi.enabled) {
+                try { await WebMidi.enable({sysex:true}); refreshStatus(); } catch (e) { log(`WebMidi enable failed: ${e.message}`, 'bad'); }
+            }
+            if (!out) {
+                const roli = WebMidi.outputs.find(o => /roli|lumi/i.test(o.name));
+                if (roli) { out = roli; outSel.value = roli.id; log(`Auto-selected output: ${roli.name}`); }
+            }
             if (capturing) return;
             capturing = true;
             document.getElementById('cap-start').disabled = true;
@@ -402,9 +583,24 @@ Open Questions
         outSel.addEventListener('change', (e) => setOutputById(e.target.value));
         document.getElementById('play').addEventListener('click', () => sendTestTone());
 
-        document.querySelector('[data-act="green"]').addEventListener('click', () => sendLumiColor(NOTE_C4, COLORS.green));
-        document.querySelector('[data-act="red"]').addEventListener('click', () => sendLumiColor(NOTE_C4, COLORS.red));
-        document.querySelector('[data-act="off"]').addEventListener('click', () => sendLumiColor(NOTE_C4, COLORS.off));
+        document.getElementById('bridge-spy').addEventListener('click', () => {
+            // Choose an input that looks like Spy/IAC
+            const spyIn = WebMidi.inputs.find(i => looksLikeSpyName(i.name));
+            if (spyIn) { inSel.value = spyIn.id; log(`Bridge: Input set to ${spyIn.name}`); }
+            else { log('Bridge: No Spy/IAC input found', 'bad'); }
+            // Choose a LUMI/ROLI output
+            const lumiOut = WebMidi.outputs.find(o => looksLikeLumiName(o.name));
+            if (lumiOut) { outSel.value = lumiOut.id; setOutputById(lumiOut.id); }
+            else { log('Bridge: No LUMI/ROLI output found', 'bad'); }
+            // Ensure Thru ON and start capture
+            const thruCb = document.getElementById('cap-thru');
+            thruCb.checked = true;
+            startCapture();
+            log('Bridge armed: Spy/IAC → (thru) → LUMI');
+        });
+
+        document.querySelector('[data-act="global-red"]').addEventListener('click', () => sendGlobalColorRGB([255,0,0]));
+        document.querySelector('[data-act="global-green"]').addEventListener('click', () => sendGlobalColorRGB([0,255,0]));
         document.querySelector('[data-act="scale"]').addEventListener('click', setScaleColorsCmajor);
         document.querySelector('[data-act="clear"]').addEventListener('click', () => {
             for (let m = RANGE_LOW; m < RANGE_HIGH_EXC; m++) sendLumiColor(m, COLORS.off);
@@ -420,6 +616,11 @@ Open Questions
             // Universal Identity Request: F0 7E 7F 06 01 F7
             sendRawSysex([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]);
             log('Sent Universal Identity Request (device should respond on its MIDI IN → check a monitor bound to the device input).');
+        });
+        document.getElementById('clear-log').addEventListener('click', () => {
+            logListEl.innerHTML = '';
+            seenSet.clear();
+            seenQueue.length = 0;
         });
 
         document.getElementById('cap-start').addEventListener('click', startCapture);
@@ -481,6 +682,7 @@ Open Questions
 
         // init presets UI now
         initPresetsUI();
+        refreshOutHint();
     })();
 </script>
 </body>

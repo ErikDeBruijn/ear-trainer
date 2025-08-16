@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>LUMI Prep – SysEx bootstrap (ColorMode=1, Root=F#, Scale=Major)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial;margin:24px}
+    fieldset{margin:0 0 16px;padding:12px;border-radius:8px}
+    legend{font-weight:600}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    label{display:flex;gap:6px;align-items:center}
+    #log{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;background:#f7f7f7;border:1px solid #ddd;border-radius:8px;min-height:120px;max-height:45vh;overflow:auto}
+    #log .toolbar{position:sticky;top:0;background:linear-gradient(#fafafa,#f2f2f2);border-bottom:1px solid #ddd;padding:6px 8px;z-index:1;display:flex;gap:10px;align-items:center}
+    #log-list>div{padding:2px 8px}
+    .ok{color:#0a7a3c;font-weight:600}.bad{color:#8a3b00}.muted{color:#666}
+  </style>
+</head>
+<body>
+  <h1>LUMI Prep</h1>
+  <p class="muted">On connect, this sends: Color Mode = 1, Root = F#, Scale = Major. Uses Web MIDI (SysEx required).</p>
+
+  <fieldset>
+    <legend>1) Connection</legend>
+    <div class="row">
+      <button id="connect">Connect MIDI (SysEx)</button>
+      <span id="status" class="bad">Not connected</span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>2) Target Output</legend>
+    <div class="row">
+      <label>Output <select id="out"></select></label>
+      <button id="auto">Auto-pick LUMI</button>
+      <span id="out-hint" class="muted"></span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>3) Send Prep (manual)</legend>
+    <div class="row">
+      <label>Mode
+        <select id="sel-mode">
+          <option value="1">1</option>
+          <option value="2">2</option>
+        </select>
+      </label>
+      <label>Root
+        <select id="sel-root">
+          <option value="C">C</option>
+          <option value="F#">F#</option>
+        </select>
+      </label>
+      <label>Scale
+        <select id="sel-scale">
+          <option value="Major">Major</option>
+          <option value="Minor">Minor</option>
+        </select>
+      </label>
+      <button id="send-all">Send All</button>
+      <button id="btn-root-lightblue" title="77 00 10 30 64 7F 6A 4C 7F 03 5D">Root color → light blue</button>
+      <button id="btn-primary-deepblue" title="77 00 10 20 64 3F 20 00 7E 03 10">Primary color → deep blue</button>
+      <button id="btn-correct" title="Global green">CORRECT!</button>
+      <button id="btn-wrong" title="Global red">WRONG!</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Log</legend>
+    <div id="log">
+      <div class="toolbar">
+        <button id="clear-log">Clear</button>
+        <span class="muted">Newest first</span>
+      </div>
+      <div id="log-list"></div>
+    </div>
+  </fieldset>
+
+  <script id="lumi-abstraction">
+    // LUMI SysEx mini-lib (inline). Builds full frames incl. checksum.
+    // Based on community RE + JUCE Blocks protocol. See: benob/LUMI-lights SYSEX.txt (checksum & layout).
+    // Defaults: manufacturer 00 21 10 (ROLI), device-id 0x00 (works for LUMI per captures; 0x37 also seen in docs).
+    (function(){
+      const MFR = [0xF0,0x00,0x21,0x10];
+      const END = 0xF7;
+      let DEVICE_ID = 0x00; // change to 0x37 if your unit expects 0x37
+
+      // --- helpers ---
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v|0));
+      function checksum(cmd8){ // per benob SYSEX.txt: seed=size (=8), then c = (c*3 + b) & 0xFF, return c & 0x7F
+        let c = cmd8.length; // 8
+        for(const b of cmd8){ c = (c * 3 + (b & 0x7F)) & 0xFF; }
+        return c & 0x7F;
+      }
+      function frameFromCmd8(cmd8, device=DEVICE_ID){
+        if (cmd8.length !== 8) throw new Error('cmd8 must be 8 bytes');
+        const sum = checksum(cmd8);
+        const body = [0x77, device & 0x7F, ...cmd8, sum];
+        return [...MFR, ...body, END];
+      }
+
+      // --- RGB → 5-byte color payload encoding (from docs) ---
+      function encodeColorRGB(r,g,b){
+        r = clamp(r,0,255); g = clamp(g,0,255); b = clamp(b,0,255);
+        const v1 = ((b & 0x03) << 5) | 0x04;                 // 00100 + 2 LSB of B
+        const v2 = ((b >> 2) & 0x3F) | (g & 0x01);           // 6 msb of B + 1 lsb of G
+        const v3 = (g >> 1) & 0x7F;                          // mid 7 bits of G
+        const v4 = r & 0x7F;                                 // low 7 of R
+        const v5 = ((r >> 7) & 0x01) | 0x7E;                 // msb of R + 1111110
+        return [v1,v2,v3,v4,v5];
+      }
+
+      // --- command builders (8-byte cmd) ---
+      // Primary (global) color: 10 20 [5 color bytes] 03
+      function cmdPrimaryRGB(r,g,b){ return [0x10,0x20, ...encodeColorRGB(r,g,b), 0x03]; }
+      // Root color: 10 30 [5 color bytes] 03
+      function cmdRootRGB(r,g,b){ return [0x10,0x30, ...encodeColorRGB(r,g,b), 0x03]; }
+
+      // Color mode (per docs)
+      const MODE_MAP = { '1':[0x10,0x40,0x02,0,0,0,0,0], '2':[0x10,0x40,0x22,0,0,0,0,0], 'piano':[0x10,0x40,0x42,0,0,0,0,0], 'night':[0x10,0x40,0x62,0,0,0,0,0] };
+      function cmdMode(mode){ const m = MODE_MAP[String(mode)]; if(!m) throw new Error('unknown mode'); return m.slice(); }
+
+      // Scale (subset; extend as needed)
+      const SCALE_MAP = { 'major':[0x10,0x60,0x02,0,0,0,0,0], 'minor':[0x10,0x60,0x22,0,0,0,0,0] };
+      function cmdScale(name){ const s = SCALE_MAP[String(name).toLowerCase()]; if(!s) throw new Error('unknown scale'); return s.slice(); }
+
+      // Root key (examples from docs/captures). Extend table as we learn full mapping.
+      const ROOT_MAP = {
+        'c':[0x10,0x30,0x03,0,0,0,0,0],
+        'f#':[0x10,0x30,0x43,0x01,0,0,0,0]
+      };
+      function cmdRootKey(root){ const r = ROOT_MAP[String(root).toLowerCase()]; if(!r) throw new Error('unknown root'); return r.slice(); }
+
+      // --- public API ---
+      function setDeviceId(id){ DEVICE_ID = id & 0x7F; }
+      function buildPrimaryRGB(r,g,b){ return frameFromCmd8(cmdPrimaryRGB(r,g,b)); }
+      function buildRootRGB(r,g,b){ return frameFromCmd8(cmdRootRGB(r,g,b)); }
+      function buildMode(mode){ return frameFromCmd8(cmdMode(mode)); }
+      function buildScale(name){ return frameFromCmd8(cmdScale(name)); }
+      function buildRootKey(root){ return frameFromCmd8(cmdRootKey(root)); }
+
+      // Send helpers (use global `out` from page if present)
+      function send(bytes){ if (window.out && typeof window.out.send === 'function') { window.out.send(bytes); if (window.append){ window.append('SysEx → '+bytes.map(b=>b.toString(16).padStart(2,'0')).join(' ')); } } else { throw new Error('No MIDI output bound'); } }
+
+      window.LUMI = {
+        setDeviceId,
+        // builders (return full F0..F7)
+        buildPrimaryRGB, buildRootRGB, buildMode, buildScale, buildRootKey,
+        // immediate senders
+        sendPrimaryRGB:(r,g,b)=>send(buildPrimaryRGB(r,g,b)),
+        sendRootRGB:(r,g,b)=>send(buildRootRGB(r,g,b)),
+        sendMode:(m)=>send(buildMode(m)),
+        sendScale:(s)=>send(buildScale(s)),
+        sendRootKey:(r)=>send(buildRootKey(r)),
+        _encodeColorRGB: encodeColorRGB, _checksum: checksum
+      };
+    })();
+  </script>
+  <script>
+    // --- Minimal Web MIDI helper (no external libs) ---
+    const statusEl = document.getElementById('status');
+    const outSel = document.getElementById('out');
+    const outHint = document.getElementById('out-hint');
+    const logEl = document.getElementById('log-list');
+
+    let access = null;
+    let out = null;
+
+    const MFR = [0xF0,0x00,0x21,0x10]; // ROLI manufacturer id
+    const END = 0xF7;
+
+    // Based on your hints in this file's comment header
+    // We will wrap these payloads with the manufacturer SysEx header/trailer.
+    const PAY_COLOR_MODE_1 = [0x77,0x00,0x10,0x40,0x02,0x00,0x00,0x00,0x00,0x00,0x5E];
+    const PAY_ROOT_F_SHARP = [0x77,0x00,0x10,0x30,0x43,0x01,0x00,0x00,0x00,0x00,0x52];
+    const PAY_SCALE_MAJOR  = [0x77,0x00,0x10,0x60,0x02,0x00,0x00,0x00,0x00,0x00,0x7E];
+
+    function payloadForMode(mode){
+      switch(String(mode)){
+        case '1': return [0x77,0x00,0x10,0x40,0x02,0x00,0x00,0x00,0x00,0x00,0x5E];
+        case '2': return [0x77,0x00,0x10,0x40,0x22,0x00,0x00,0x00,0x00,0x00,0x3E];
+        default:  return null;
+      }
+    }
+    function payloadForRoot(root){
+      switch(String(root)){
+        case 'C':  return [0x77,0x00,0x10,0x30,0x03,0x00,0x00,0x00,0x00,0x00,0x41];
+        case 'F#': return [0x77,0x00,0x10,0x30,0x43,0x01,0x00,0x00,0x00,0x00,0x52];
+        default:   return null;
+      }
+    }
+    function payloadForScale(name){
+      switch(String(name)){
+        case 'Major': return [0x77,0x00,0x10,0x60,0x02,0x00,0x00,0x00,0x00,0x00,0x7E];
+        case 'Minor': return [0x77,0x00,0x10,0x60,0x22,0x00,0x00,0x00,0x00,0x00,0x5E];
+        default:      return null;
+      }
+    }
+
+    // Minimal global color setter (14-bit per channel, 7-bit split)
+    function enc14(v){ const x = Math.max(0, Math.min(16383, v|0)); return [(x>>7)&0x7F, x&0x7F]; }
+    function rgb255ToPairs(r,g,b){
+      const s = v => Math.round(Math.max(0,Math.min(255,v))/255*16383);
+      return [...enc14(s(r)), ...enc14(s(g)), ...enc14(s(b))];
+    }
+    // NOTE: On some LUMI firmware, global color via 77 43 ... 03 44 may be ignored; the primary color
+    // write via 77 00 10 20 ... appears to take effect immediately. For CORRECT/WRONG we use the latter.
+    function sendGlobalRGB(r,g,b){
+      const pairs = rgb255ToPairs(r,g,b);
+      const msg = [0x77,0x43,0x00,0x00,0x00,0x00,0x00, 0x03,0x44, ...pairs];
+      sendBytes(wrap(msg));
+    }
+
+    const MAX_LOG = 500; const seen = new Set(); const seenQ = [];
+    function append(line){
+      if (seen.has(line)) return; seen.add(line); seenQ.push(line); if (seenQ.length>1500){ const o=seenQ.shift(); seen.delete(o); }
+      const d=document.createElement('div'); d.textContent=line; if(logEl.firstChild){logEl.insertBefore(d,logEl.firstChild);} else {logEl.appendChild(d);} while(logEl.childElementCount>MAX_LOG){logEl.removeChild(logEl.lastChild);} }
+    function fmt(bytes){ return bytes.map(b=>b.toString(16).padStart(2,'0')).join(' '); }
+    function ok(s){ statusEl.textContent=s; statusEl.className='ok'; }
+    function bad(s){ statusEl.textContent=s; statusEl.className='bad'; }
+
+    function parseHexPayload(str){
+      const tokens = str.trim().split(/\s+/);
+      const out = [];
+      for (const t of tokens){
+        const v = parseInt(t,16);
+        if (Number.isFinite(v)) out.push(v & 0x7F); // payload bytes are 7-bit safe here
+      }
+      return out;
+    }
+
+    async function connect(){
+      try{
+        access = await navigator.requestMIDIAccess({ sysex:true });
+        ok('MIDI: OK · SysEx: OK');
+        refreshOutputs();
+        autoPick();
+        // Immediately send the three prep messages
+        await sendAll();
+      }catch(e){ bad('Failed: '+e.message); }
+    }
+
+    function refreshOutputs(){
+      outSel.innerHTML='';
+      // MIDIOutputMap: iterate values() to get MIDIOutput objects
+      const outputs = access?.outputs;
+      if (!outputs) return;
+      for (const port of outputs.values()) {
+        const opt=document.createElement('option');
+        opt.value = port.id;
+        opt.textContent = port.name || port.id;
+        outSel.appendChild(opt);
+      }
+      outSel.onchange = () => {
+        const id = outSel.value;
+        out = access.outputs.get(id) || null;
+        hintOut();
+      };
+      // preselect first if any
+      const first = outputs.values().next().value;
+      if (first){ outSel.value = first.id; out = first; }
+      hintOut();
+    }
+
+    function looksLumi(name){ return /\b(roli|lumi)\b/i.test(name||''); }
+    function hintOut(){ outHint.textContent = out ? `→ Output: ${out.name}` : 'No output selected'; outHint.className = out && looksLumi(out.name) ? 'ok' : 'bad'; }
+
+    function autoPick(){
+      if (!access || !access.outputs) return;
+      let best = null;
+      for (const port of access.outputs.values()) {
+        if (looksLumi(port.name)) { best = port; break; }
+      }
+      if (best){ out = best; outSel.value = best.id; hintOut(); append(`Auto-selected LUMI output: ${best.name}`); }
+    }
+
+    function wrap(bytes){ return [...MFR, ...bytes, END]; }
+
+    function sendBytes(bytes){
+      if(!out){ append('No output selected'); return; }
+      try{ out.send(bytes); append('SysEx → '+fmt(bytes)); }catch(e){ append('Send failed: '+e.message); }
+    }
+
+    function sendPayloadHex(hex){
+      const pay = parseHexPayload(hex);
+      if (!pay.length) { append('No payload parsed'); return; }
+      sendBytes(wrap(pay));
+    }
+
+    async function sendAll(){
+      const p1 = payloadForMode(selMode?.value || '1');
+      const p2 = payloadForRoot(selRoot?.value || 'F#');
+      const p3 = payloadForScale(selScale?.value || 'Major');
+      if (p1) sendBytes(wrap(p1));
+      await new Promise(r=>setTimeout(r,25));
+      if (p2) sendBytes(wrap(p2));
+      await new Promise(r=>setTimeout(r,25));
+      if (p3) sendBytes(wrap(p3));
+    }
+
+    const selMode  = document.getElementById('sel-mode');
+    const selRoot  = document.getElementById('sel-root');
+    const selScale = document.getElementById('sel-scale');
+
+    // Set defaults to Mode 1, Root F#, Scale Major to match auto-send
+    selMode.value = '1';
+    selRoot.value = 'F#';
+    selScale.value = 'Major';
+
+    selMode.addEventListener('change', ()=>{ const p = payloadForMode(selMode.value); if(p) sendBytes(wrap(p)); });
+    selRoot.addEventListener('change', ()=>{ const p = payloadForRoot(selRoot.value); if(p) sendBytes(wrap(p)); });
+    selScale.addEventListener('change',()=>{ const p = payloadForScale(selScale.value); if(p) sendBytes(wrap(p)); });
+
+    document.getElementById('connect').addEventListener('click', connect);
+    document.getElementById('auto').addEventListener('click', autoPick);
+    document.getElementById('send-all').addEventListener('click', sendAll);
+    document.getElementById('btn-root-lightblue').addEventListener('click', ()=>{
+      sendPayloadHex('77 00 10 30 64 7F 6A 4C 7F 03 5D');
+    });
+    document.getElementById('btn-primary-deepblue').addEventListener('click', ()=>{
+      sendPayloadHex('77 00 10 20 64 3F 20 00 7E 03 10');
+    });
+    document.getElementById('btn-correct').addEventListener('click', ()=>{
+      // primary color → bright green (user-provided payload)
+      sendPayloadHex('77 00 10 20 04 40 7F 4D 7E 03 7B');
+    });
+    document.getElementById('btn-wrong').addEventListener('click', ()=>{
+      // primary color → bright red (user-provided payload)
+      sendPayloadHex('77 00 10 20 04 00 00 7F 7F 03 1B');
+    });
+    document.getElementById('clear-log').addEventListener('click', ()=>{ logEl.innerHTML=''; seen.clear(); seenQ.length=0; });
+  </script>
+</body>
+</html>
