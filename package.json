@@ -1,0 +1,16 @@
+{
+  "name": "ear-trainer",
+  "version": "0.0.2",
+  "private": true,
+  "description": "Single-page ear trainer (Web MIDI + Web Audio)",
+  "license": "MIT",
+  "scripts": {
+    "serve": "http-server -p 8080 -c-1",
+    "https": "ngrok http 8080",
+    "format": "prettier -w ."
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "prettier": "^3.3.3"
+  }
+}

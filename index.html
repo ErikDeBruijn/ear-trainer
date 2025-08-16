@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Ear Trainer MVP</title>
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/tone@latest/build/Tone.js"></script>
+    <script src="https://unpkg.com/webmidi@latest/dist/iife/webmidi.iife.js"></script>
+    <script src="https://g200kg.github.io/webaudio-controls/webaudio-controls.js"></script>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="title">Ear Trainer — v0.1</div>
+        <div class="controls">
+            <label>Key
+                <select id="key-select">
+                    <option value="C-major">C major</option>
+                    <option value="G-major">G major</option>
+                    <option value="D-major">D major</option>
+                    <option value="A-minor">A minor</option>
+                    <option value="E-minor">E minor</option>
+                </select>
+            </label>
+            <label>Range
+                <select id="range-select">
+                    <option value="C3-C5">C3–C5</option>
+                    <option value="A2-A4">A2–A4</option>
+                    <option value="C2-C4">C2–C4</option>
+                </select>
+            </label>
+            <label>MIDI In
+                <select id="midi-in"></select>
+            </label>
+            <label>MIDI Out
+                <select id="midi-out"></select>
+            </label>
+            <button id="start" class="primary">Start</button>
+            <button id="pause" class="secondary">Pause</button>
+        </div>
+    </header>
+
+    <section class="panel">
+        <!-- on-screen keyboard -->
+        <webaudio-keyboard id="kbd" min="48" keys="25" width="920" height="120" outline="1"></webaudio-keyboard>
+
+        <!-- HUD -->
+        <div class="hud">
+            <div>Score: <span id="score">0</span></div>
+            <div>Streak: <span id="streak">0</span></div>
+            <div>Timer: <span id="timer">60</span>s</div>
+            <div>Accuracy: <span id="acc">—</span></div>
+        </div>
+        <div id="status" class="status"></div>
+    </section>
+</div>
+
+<!-- App -->
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
