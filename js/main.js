@@ -22,9 +22,7 @@ const game = new Game({
     pickNote: pick,
     onTarget: async (m) => {
         ui.clearStatus();
-        ui.highlightTarget(m);
         audio.playMidiNote(m, 0.35);
-        if (midi.out) midi.sendNote(m, 0.8, 200); // light ping on external keyboard
     },
     checkAnswer: (t, a) => t === a,
     onTick: (sec) => ui.updateHUD({ timer: sec }),

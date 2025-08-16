@@ -21,12 +21,6 @@ export class UI {
       });
     }
 
-    highlightTarget(midi) {
-      if (this.kbd && typeof this.kbd.setNote === "function") {
-        this.kbd.setNote(1, midi);
-        setTimeout(() => this.kbd.setNote(0, midi), 400);
-      }
-    }
 
     flash(midi, ok) {
         this.statusEl.textContent = ok ? "Correct!" : "Wrong";

@@ -11,7 +11,8 @@
 
 ## 🧰 Fix/Polish
 - [x] Visuals: success/fail glow on keys (CSS) instead of status text
-- [ ] Don't display the target note on the keyboard because it gives away the answer
+- [x] Don't display the target note on the keyboard because it gives away the answer
+- [ ] Allow the resolution (audible) to be heard before the target note
 - [ ] Clamp range to valid white-key `min` for keyboard widget
 - [ ] Debounce double answers on overlapping note-ons
 - [ ] Relegate MIDI in/out to settings modal (to be displayed when no MIDI devices is chosen/remembered or the connection not present)
