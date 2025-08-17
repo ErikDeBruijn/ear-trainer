@@ -1,7 +1,7 @@
 // js/ui.js
 export class UI {
     constructor() {
-        this.kbd = document.getElementById("kbd");
+        this.pianoKeys = document.getElementById("piano-keys");
         this.scoreEl = document.getElementById("score");
         this.streakEl = document.getElementById("streak");
         this.timerEl = document.getElementById("timer");
@@ -9,16 +9,36 @@ export class UI {
         this.statusEl = document.getElementById("status");
     }
 
-    onScreenKey(cb) {
-      if (!this.kbd) return;
-      // webaudio-keyboard emits e.note as [state, midiNumber]; fire only on note-on
-      this.kbd.addEventListener("change", e => {
-        const pair = e.note || e.detail?.note;
-        if (Array.isArray(pair)) {
-          const [state, number] = pair;
-          if (state === 1) cb(number);
+    onScreenKey(cb, noteOffCb) {
+      if (!this.pianoKeys) return;
+      // HTML piano keys with data-note attributes
+      this.pianoKeys.addEventListener("mousedown", e => {
+        const key = e.target.closest('.key');
+        if (key && key.dataset.note) {
+          const midiNote = parseInt(key.dataset.note);
+          cb(midiNote);
         }
       });
+      
+      // Add mouseup handler for note off
+      if (noteOffCb) {
+        this.pianoKeys.addEventListener("mouseup", e => {
+          const key = e.target.closest('.key');
+          if (key && key.dataset.note) {
+            const midiNote = parseInt(key.dataset.note);
+            noteOffCb(midiNote);
+          }
+        });
+        
+        // Also handle mouse leave to stop notes when dragging off keys
+        this.pianoKeys.addEventListener("mouseleave", e => {
+          const key = e.target.closest('.key');
+          if (key && key.dataset.note) {
+            const midiNote = parseInt(key.dataset.note);
+            noteOffCb(midiNote);
+          }
+        });
+      }
     }
 
 
@@ -55,10 +75,34 @@ export class UI {
     }
 
     setKeyboardRange(min, maxExclusive) {
-      if (!this.kbd) return;
-      const keys = Math.max(1, (maxExclusive|0) - (min|0));
-      this.kbd.setAttribute("min", String(min));
-      this.kbd.setAttribute("keys", String(keys));
+      // HTML piano keyboard range is fixed in the HTML structure
+      // This method is kept for compatibility but doesn't need to do anything
+    }
+
+    highlightScaleNotes(keySet, min, maxExclusive) {
+      const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      const highlightedNotes = [];
+      
+      // Clear all highlights
+      const allKeys = document.querySelectorAll('#piano-keys .key');
+      allKeys.forEach(key => key.classList.remove('highlighted'));
+      
+      // Highlight scale notes
+      for (let midiNote = min; midiNote < maxExclusive; midiNote++) {
+        if (keySet.includes(midiNote % 12)) {
+          const octave = Math.floor(midiNote / 12) - 1;
+          const noteName = noteNames[midiNote % 12];
+          highlightedNotes.push(`${noteName}${octave}`);
+          
+          // Find and highlight the key with this MIDI note
+          const keyElement = document.querySelector(`#piano-keys .key[data-note="${midiNote}"]`);
+          if (keyElement) {
+            keyElement.classList.add('highlighted');
+          }
+        }
+      }
+      
+      console.log(`Highlighted keys: ${highlightedNotes.join(', ')}`);
     }
 
     updateHUD({score, streak, timer, accuracy}) {
@@ -67,6 +111,7 @@ export class UI {
         if (timer != null) this.timerEl.textContent = timer;
         if (accuracy != null) this.accEl.textContent = isNaN(accuracy) ? "—" : `${Math.round(accuracy)}%`;
     }
+
 
     showConfetti() {
         // Use canvas-confetti library

@@ -330,7 +330,7 @@ async function boot() {
     }
 
     // Screen keyboard input
-    ui.onScreenKey((m)=>handleAnswer(m));
+    ui.onScreenKey((m)=>handleAnswer(m), (m)=>handleNoteOff(m));
 
     // MIDI setup
     try {
@@ -379,6 +379,11 @@ async function boot() {
 }
 
 function handleAnswer(midiNote) {
+    // Add visual feedback for key press
+    if (window.addKeyPress) {
+        window.addKeyPress(midiNote);
+    }
+    
     // Set root note and start game if idle when key is pressed
     if (game.state === "idle") {
         // Determine key signature from pressed note

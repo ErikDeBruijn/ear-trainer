@@ -31,6 +31,7 @@
 - [ ] Debounce double answers on overlapping note-ons
 - [ ] Better error UI when MIDI permission denied
 - [ ] Confetti also when playing for 10 minutes that day
+- [ ] Add integrity hash to the script tag where possible (e.g., CDN) to prevent tampering
 
 ## 🎯 Next (v0.2)
 - [ ] Difficulty modes (subset degrees vs. full scale vs. chromatic)

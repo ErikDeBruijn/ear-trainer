@@ -9,8 +9,8 @@
     <!-- Libraries -->
     <script src="https://unpkg.com/tone@latest/build/Tone.js"></script>
     <script src="https://unpkg.com/webmidi@latest/dist/iife/webmidi.iife.js"></script>
-    <script src="https://g200kg.github.io/webaudio-controls/webaudio-controls.js"></script>
     <script src="https://unpkg.com/canvas-confetti@latest/dist/confetti.browser.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="container">
@@ -93,7 +93,36 @@
 
     <section class="panel">
         <!-- on-screen keyboard -->
-        <webaudio-keyboard id="kbd" min="48" keys="24" width="920" height="120" outline="1"></webaudio-keyboard>
+        <div class="piano-container">
+            <div class="keys" id="piano-keys">
+                <!-- C3 to C5 range (24 keys) -->
+                <div class="key" data-note="48">C3</div>
+                <div class="key sharp" data-note="49">C#3</div>
+                <div class="key" data-note="50">D3</div>
+                <div class="key sharp" data-note="51">D#3</div>
+                <div class="key" data-note="52">E3</div>
+                <div class="key" data-note="53">F3</div>
+                <div class="key sharp" data-note="54">F#3</div>
+                <div class="key" data-note="55">G3</div>
+                <div class="key sharp" data-note="56">G#3</div>
+                <div class="key" data-note="57">A3</div>
+                <div class="key sharp" data-note="58">A#3</div>
+                <div class="key" data-note="59">B3</div>
+                <div class="key" data-note="60">C4</div>
+                <div class="key sharp" data-note="61">C#4</div>
+                <div class="key" data-note="62">D4</div>
+                <div class="key sharp" data-note="63">D#4</div>
+                <div class="key" data-note="64">E4</div>
+                <div class="key" data-note="65">F4</div>
+                <div class="key sharp" data-note="66">F#4</div>
+                <div class="key" data-note="67">G4</div>
+                <div class="key sharp" data-note="68">G#4</div>
+                <div class="key" data-note="69">A4</div>
+                <div class="key sharp" data-note="70">A#4</div>
+                <div class="key" data-note="71">B4</div>
+                <div class="key" data-note="72">C5</div>
+            </div>
+        </div>
 
         <!-- HUD -->
         <div class="hud">
@@ -116,6 +145,7 @@
 <div id="overlay-flash" aria-hidden="true"></div>
 
 <!-- App -->
+<script src="js/piano.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
