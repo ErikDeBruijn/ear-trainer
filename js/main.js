@@ -350,6 +350,12 @@ async function boot() {
 }
 
 function handleAnswer(midiNote) {
+    // Auto-start game if idle when key is pressed
+    if (game.state === "idle") {
+        document.getElementById("start-pause").click();
+        return;
+    }
+    
     const ok = game.answer(midiNote);
     if (ok == null) return;
     
