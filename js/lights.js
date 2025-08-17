@@ -2,6 +2,8 @@
 
 // lights.js - abstraction for per-key lighting (ROLI LUMI etc.)
 
+import { buildPrimaryRGB, buildFrameFromCmd8, buildBrightness } from './lumi.js';
+
 let midiOut = null;
 let isLumi = false;
 
@@ -73,4 +75,80 @@ export function clearAllKeys() {
   } catch (e) {
     console.warn("Failed to clear keys:", e);
   }
+}
+
+function sendPrimaryColor(r, g, b) {
+  if (!midiOut || !isLumi) return;
+  try {
+    const frame = buildPrimaryRGB(r, g, b);
+    midiOut.send(frame);
+  } catch (e) {
+    console.warn("Failed to send primary color:", e);
+  }
+}
+
+export function sendPrimaryGreen() {
+  sendPrimaryColor(0, 255, 0);
+  setTimeout(() => sendPrimaryColor(127, 127, 127), 350); // Return to white
+}
+
+export function sendPrimaryRed() {
+  sendPrimaryColor(255, 0, 0);
+  setTimeout(() => sendPrimaryColor(127, 127, 127), 350); // Return to white
+}
+
+// Root key commands mapping - all 12 chromatic keys
+const ROOT_KEY_COMMANDS = {
+  'C': [0x10, 0x30, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00],   // C (confirmed)
+  'C#': [0x10, 0x30, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00],  // C#/Db
+  'Db': [0x10, 0x30, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00],  // Db (same as C#)
+  'D': [0x10, 0x30, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00],   // D
+  'D#': [0x10, 0x30, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00],  // D#/Eb
+  'Eb': [0x10, 0x30, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00],  // Eb (same as D#)
+  'E': [0x10, 0x30, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00],   // E
+  'F': [0x10, 0x30, 0x53, 0x00, 0x00, 0x00, 0x00, 0x00],   // F
+  'F#': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],  // F# (confirmed)
+  'Gb': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],  // Gb (same as F#)
+  'G': [0x10, 0x30, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00],   // G
+  'G#': [0x10, 0x30, 0x13, 0x01, 0x00, 0x00, 0x00, 0x00],  // G#/Ab
+  'Ab': [0x10, 0x30, 0x13, 0x01, 0x00, 0x00, 0x00, 0x00],  // Ab (same as G#)
+  'A': [0x10, 0x30, 0x23, 0x01, 0x00, 0x00, 0x00, 0x00],   // A
+  'A#': [0x10, 0x30, 0x33, 0x01, 0x00, 0x00, 0x00, 0x00],  // A#/Bb
+  'Bb': [0x10, 0x30, 0x33, 0x01, 0x00, 0x00, 0x00, 0x00],  // Bb (same as A#)
+  'B': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00]    // B
+};
+
+export function setRootKey(keySignature) {
+  if (!midiOut || !isLumi) return;
+
+  // Extract root note from key signature like "C-major" or "A-minor"
+  const rootNote = keySignature.split('-')[0];
+  const command = ROOT_KEY_COMMANDS[rootNote];
+
+  if (!command) {
+    console.warn(`Unknown root key: ${rootNote}`);
+    return;
+  }
+
+  try {
+    const frame = buildFrameFromCmd8(command);
+    midiOut.send(frame);
+  } catch (e) {
+    console.warn("Failed to set root key:", e);
+  }
+}
+
+export function setBrightness(level) {
+  if (!midiOut || !isLumi) return;
+
+  try {
+    const frame = buildBrightness(level);
+    midiOut.send(frame);
+  } catch (e) {
+    console.warn("Failed to set brightness:", e);
+  }
+}
+
+export function setMaxBrightness() {
+  setBrightness('100');
 }

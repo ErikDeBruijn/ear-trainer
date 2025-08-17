@@ -21,8 +21,10 @@
                     <option value="C-major">C major</option>
                     <option value="G-major">G major</option>
                     <option value="D-major">D major</option>
+                    <option value="F#-major">F# major</option>
                     <option value="A-minor">A minor</option>
                     <option value="E-minor">E minor</option>
+                    <option value="F#-minor">F# minor</option>
                 </select>
             </label>
             <label>Range
@@ -49,6 +51,12 @@
                 <select id="wrong-mode">
                     <option value="silent">Silent</option>
                     <option value="play-pressed">Play pressed note</option>
+                </select>
+            </label>
+            <label>Play home note first
+                <select id="tonic-mode">
+                    <option value="before-target" selected>Yes</option>
+                    <option value="off">No</option>
                 </select>
             </label>
             <button id="start" class="primary">Start</button>

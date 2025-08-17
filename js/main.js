@@ -5,7 +5,7 @@ import { parseKey, rangeToMidi, randomNoteInKey } from "./theory.js";
 import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
-import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange, sendPrimaryGreen, sendPrimaryRed } from "./lights.js";
+import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange, sendPrimaryGreen, sendPrimaryRed, setRootKey, setMaxBrightness } from "./lights.js";
 
 const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
 
@@ -17,6 +17,7 @@ let range = rangeToMidi(document.getElementById("range-select").value);
 ui.setKeyboardRange(range[0], range[1]);
 setScaleColors(keySet, range[0], range[1]);
 let wrongMode = "silent";
+let tonicMode = "before-target";
 
 function pick() { return randomNoteInKey(keySet, range); }
 
@@ -24,7 +25,12 @@ const game = new Game({
     pickNote: pick,
     onTarget: async (m) => {
         ui.clearStatus();
-        audio.playMidiNote(m, 0.35);
+        if (tonicMode === "before-target") {
+            const tonic = keySet[0] + Math.floor(m / 12) * 12;
+            await audio.playTonicThenTarget(tonic, m);
+        } else {
+            audio.playMidiNote(m, 0.35);
+        }
     },
     checkAnswer: (t, a) => t === a,
     onTick: (sec) => ui.updateHUD({ timer: sec }),
@@ -38,6 +44,7 @@ async function boot() {
     // resume audio on user gesture
     document.getElementById("start").addEventListener("click", async () => {
         await audio.resume();
+        setMaxBrightness(); // Set maximum brightness when game starts
         game.start();
     });
     document.getElementById("pause").addEventListener("click", () => game.pause());
@@ -47,6 +54,7 @@ async function boot() {
         keySet = parseKey(e.target.value);
         clearRange(range[0], range[1]);
         setScaleColors(keySet, range[0], range[1]);
+        setRootKey(e.target.value);
     });
     document.getElementById("range-select").addEventListener("change", (e)=>{
         range = rangeToMidi(e.target.value);
@@ -60,6 +68,13 @@ async function boot() {
     if (wrongSel) {
       wrongSel.addEventListener("change", e => { wrongMode = e.target.value; });
       wrongMode = wrongSel.value || "silent";
+    }
+
+    // Tonic reference mode selector
+    const tonicSel = document.getElementById("tonic-mode");
+    if (tonicSel) {
+      tonicSel.addEventListener("change", e => { tonicMode = e.target.value; });
+      tonicMode = tonicSel.value || "before-target";
     }
 
     // Screen keyboard input
@@ -82,6 +97,7 @@ async function boot() {
           if (midi.out) {
             clearRange(range[0], range[1]);
             setScaleColors(keySet, range[0], range[1]);
+            setRootKey(document.getElementById("key-select").value);
           }
         });
         // auto-select first ports if present
@@ -93,6 +109,7 @@ async function boot() {
           if (midi.out) {
             clearRange(range[0], range[1]);
             setScaleColors(keySet, range[0], range[1]);
+            setRootKey(document.getElementById("key-select").value);
           }
         }
     } catch (e) {

@@ -9,4 +9,10 @@ export class AudioEngine {
         const freq = Tone.Frequency(midiNumber, "midi").toFrequency();
         this.synth.triggerAttackRelease(freq, duration);
     }
+
+    async playTonicThenTarget(tonicMidi, targetMidi, tonicDuration = 0.5, gap = 0.3, targetDuration = 0.35) {
+        await this.playMidiNote(tonicMidi, tonicDuration);
+        await new Promise(resolve => setTimeout(resolve, (tonicDuration + gap) * 1000));
+        await this.playMidiNote(targetMidi, targetDuration);
+    }
 }

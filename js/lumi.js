@@ -76,10 +76,24 @@ export const ROOT_MAP = {
   'f#': [0x10, 0x30, 0x43, 0x01, 0, 0, 0, 0],
   // Extend mapping when we learn more
 };
+
+export const BRIGHTNESS_MAP = {
+  '0':   [0x10, 0x40, 0x04, 0x00, 0, 0, 0, 0], // 0%
+  '25':  [0x10, 0x40, 0x24, 0x06, 0, 0, 0, 0], // 25%
+  '50':  [0x10, 0x40, 0x44, 0x0C, 0, 0, 0, 0], // 50%
+  '75':  [0x10, 0x40, 0x64, 0x12, 0, 0, 0, 0], // 75%
+  '100': [0x10, 0x40, 0x04, 0x19, 0, 0, 0, 0], // 100%
+};
 export function cmdRootKey(root) {
   const r = ROOT_MAP[String(root).toLowerCase()];
   if (!r) throw new Error(`Unknown root: ${root}`);
   return r.slice();
+}
+
+export function cmdBrightness(level) {
+  const b = BRIGHTNESS_MAP[String(level)];
+  if (!b) throw new Error(`Unknown brightness level: ${level}`);
+  return b.slice();
 }
 
 /** Primary/global color: 10 20 [color5] 03 */
@@ -97,6 +111,7 @@ export function buildScale(name, deviceId = 0x00)     { return buildFrameFromCmd
 export function buildRootKey(root, deviceId = 0x00)   { return buildFrameFromCmd8(cmdRootKey(root), deviceId); }
 export function buildPrimaryRGB(r,g,b, deviceId=0x00) { return buildFrameFromCmd8(cmdPrimaryRGB(r,g,b), deviceId); }
 export function buildRootRGB(r,g,b, deviceId=0x00)    { return buildFrameFromCmd8(cmdRootRGB(r,g,b), deviceId); }
+export function buildBrightness(level, deviceId=0x00) { return buildFrameFromCmd8(cmdBrightness(level), deviceId); }
 
 // ------------- Instance wrapper -------------
 export class Lumi {
@@ -118,6 +133,7 @@ export class Lumi {
   sendRootKey(root)         { return this.send(buildRootKey(root, this.deviceId)); }
   sendPrimaryRGB(r,g,b)     { return this.send(buildPrimaryRGB(r,g,b, this.deviceId)); }
   sendRootRGB(r,g,b)        { return this.send(buildRootRGB(r,g,b, this.deviceId)); }
+  sendBrightness(level)     { return this.send(buildBrightness(level, this.deviceId)); }
 }
 
 // ------------- Utilities -------------
@@ -142,9 +158,9 @@ export default {
   MFR, START, END,
   lumiChecksum,
   encodeColorRGB,
-  cmdMode, cmdScale, cmdRootKey, cmdPrimaryRGB, cmdRootRGB,
-  buildMode, buildScale, buildRootKey, buildPrimaryRGB, buildRootRGB,
-  MODE_MAP, SCALE_MAP, ROOT_MAP,
+  cmdMode, cmdScale, cmdRootKey, cmdPrimaryRGB, cmdRootRGB, cmdBrightness,
+  buildMode, buildScale, buildRootKey, buildPrimaryRGB, buildRootRGB, buildBrightness,
+  MODE_MAP, SCALE_MAP, ROOT_MAP, BRIGHTNESS_MAP,
   Lumi,
   wrapPayloadHexToFrame,
 };
