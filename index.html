@@ -53,10 +53,10 @@
                     <label>MIDI Out
                         <select id="midi-out"></select>
                     </label>
-                    <label>Wrong answer sound
-                        <select id="wrong-mode">
-                            <option value="silent">Silent</option>
-                            <option value="play-pressed">Play pressed note</option>
+                    <label>Audible response
+                        <select id="audible-response">
+                            <option value="correct-only" selected>Correct answer only</option>
+                            <option value="always">Always</option>
                         </select>
                     </label>
                     <label>Play home note first
@@ -101,7 +101,7 @@
         <div class="hud">
             <div>Score: <span id="score">0</span></div>
             <div>Streak: <span id="streak">0</span></div>
-            <div>Timer: <span id="timer">60</span>s</div>
+            <div>Practice time: <span id="timer">0:00</span></div>
             <div>Accuracy: <span id="acc">—</span></div>
         </div>
 

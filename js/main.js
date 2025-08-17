@@ -20,7 +20,7 @@ function initializeSettings() {
     const keySelect = document.getElementById("key-select");
     const rangeSelect = document.getElementById("range-select");
     const resolutionSelect = document.getElementById("resolution-frequency");
-    const wrongSelect = document.getElementById("wrong-mode");
+    const audibleResponseSelect = document.getElementById("audible-response");
     const tonicSelect = document.getElementById("tonic-mode");
     const practiceTargetSelect = document.getElementById("practice-target");
 
@@ -28,7 +28,7 @@ function initializeSettings() {
     if (savedSettings.keySelect) keySelect.value = savedSettings.keySelect;
     if (savedSettings.rangeSelect) rangeSelect.value = savedSettings.rangeSelect;
     if (savedSettings.resolutionFrequency) resolutionSelect.value = savedSettings.resolutionFrequency;
-    if (savedSettings.wrongMode) wrongSelect.value = savedSettings.wrongMode;
+    if (savedSettings.audibleResponse) audibleResponseSelect.value = savedSettings.audibleResponse;
     if (savedSettings.tonicMode) tonicSelect.value = savedSettings.tonicMode;
     if (savedSettings.practiceTarget) practiceTargetSelect.value = savedSettings.practiceTarget;
 
@@ -90,7 +90,7 @@ function saveSettings() {
         keySelect: document.getElementById("key-select").value,
         rangeSelect: document.getElementById("range-select").value,
         resolutionFrequency: document.getElementById("resolution-frequency").value,
-        wrongMode: document.getElementById("wrong-mode").value,
+        audibleResponse: document.getElementById("audible-response").value,
         tonicMode: document.getElementById("tonic-mode").value,
         practiceTarget: document.getElementById("practice-target").value
     };
@@ -101,7 +101,7 @@ let keySet = parseKey(document.getElementById("key-select").value);
 let range = rangeToMidi(document.getElementById("range-select").value);
 ui.setKeyboardRange(range[0], range[1]);
 setScaleColors(keySet, range[0], range[1]);
-let wrongMode = document.getElementById("wrong-mode").value || "silent";
+let audibleResponse = document.getElementById("audible-response").value || "correct-only";
 let tonicMode = document.getElementById("tonic-mode").value || "before-target";
 let resolutionFrequency = parseFloat(document.getElementById("resolution-frequency").value) || 1.0;
 let practiceTarget = parseInt(document.getElementById("practice-target").value) || 20;
@@ -154,12 +154,31 @@ const game = new Game({
         }
     },
     checkAnswer: (t, a) => t === a,
-    onTick: (sec) => {
-        ui.updateHUD({ timer: sec });
+    onTick: (timeString) => {
+        ui.updateHUD({ timer: timeString });
+        // Encourage user to practice for at least 10 minutes
+        const practiceSeconds = game.practiceTime;
+        if (practiceSeconds === 600) { // 10 minutes
+            ui.flash(null, true);
+            ui.updateStatus("Great! You've been practicing for 10 minutes! 🎉");
+        }
     },
     onEnd: (sum) => {
         ui.updateHUD({ accuracy: sum.accuracy });
         store.save({ best: Math.max(store.load().best||0, sum.score) });
+
+        // Provide encouragement feedback based on practice time
+        const practiceMinutes = Math.floor(game.practiceTime / 60);
+        let encouragementMessage = "Practice session complete! ";
+        if (practiceMinutes >= 10) {
+            encouragementMessage += "Excellent work - you practiced for " + practiceMinutes + " minutes! 🌟";
+        } else if (practiceMinutes >= 5) {
+            encouragementMessage += "Good job! Try to reach 10 minutes next time. 💪";
+        } else {
+            encouragementMessage += "Great start! Aim for at least 10 minutes of practice. 🎯";
+        }
+        ui.updateStatus(encouragementMessage);
+
         // Reset progress bar after a short delay to show completion
         setTimeout(() => resetProgressBar(), 2000);
     }
@@ -287,8 +306,13 @@ function handleAnswer(midiNote) {
       sendPrimaryGreen();
       // Update progress bar based on correct answers
       updateProgressBar(game.correct);
-      // Only move to next round if the answer is correct
-      setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
+      // Check if practice target is reached
+      if (game.correct >= practiceTarget) {
+        setTimeout(() => game.finish(), RESULT_HOLD_MS);
+      } else {
+        // Only move to next round if the answer is correct and target not reached
+        setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
+      }
     } else {
       if (wrongMode === "play-pressed") {
         audio.playMidiNote(midiNote, 0.4);

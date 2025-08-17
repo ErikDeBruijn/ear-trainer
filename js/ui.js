@@ -33,6 +33,11 @@ export class UI {
         this.statusEl.className = "status";
     }
 
+    updateStatus(message) {
+        this.statusEl.textContent = message;
+        this.statusEl.className = "status success";
+    }
+
     flashScreen(kind = "ok") {
       const el = document.getElementById("overlay-flash");
       if (!el) return;

@@ -19,7 +19,7 @@
 - [x] Make the progress bar section also show how many are left in the current run
 - [x] Practice 20 in a row by default and make it configurable, also group all settings and enable these to be shown/hidden (and remember that, too).
 - [x] The settings disappear after briefly being shown. It's nicer if that distractive thing doesn't happen
-- [ ] Remove the time limit and just show how long the user has been practicing in total (e.g., "Practice time: 3:45"), encourage with feedback to go for 10 minutes at least.
+- [x] Remove the time limit and just show how long the user has been practicing in total (e.g., "Practice time: 3:45"), encourage with feedback to go for 10 minutes at least.
 - [ ] The active notes (part of the current key) should be highlighted much more, on the keyboard.
 - [ ] Remove the "Wrong answer sound" option and replace it with an "Audible response" that enables us to hear whether we guessed correctly (options: "Correct answer only" / "Always").
 - [ ] Make average response times part of the score. Give feedback "FAST!" when the user was fast.

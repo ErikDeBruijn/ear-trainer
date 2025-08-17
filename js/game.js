@@ -11,7 +11,7 @@ export class Game {
     }
     reset() {
         this.score = 0; this.streak = 0; this.correct = 0; this.attempts = 0;
-        this.timeLeft = 60; this.target = null;
+        this.practiceTime = 0; this.target = null;
     }
     start() {
         this.reset(); this.state = "prompt";
@@ -20,8 +20,11 @@ export class Game {
     }
     pause() { if (this.timer) clearInterval(this.timer); this.state = "paused"; }
     tick() {
-        this.timeLeft -= 1; this.onTick(this.timeLeft);
-        if (this.timeLeft <= 0) this.finish();
+        this.practiceTime += 1; 
+        const minutes = Math.floor(this.practiceTime / 60);
+        const seconds = this.practiceTime % 60;
+        const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        this.onTick(timeString);
     }
     finish() { clearInterval(this.timer); this.state = "ended"; this.onEnd(this.summary()); }
     summary() {
