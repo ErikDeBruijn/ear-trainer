@@ -160,6 +160,8 @@ const game = new Game({
             // Play target note but don't send to MIDI out
             audio.playMidiNote(m, 0.35, false);
         }
+        // Start timing after audio finishes playing
+        game.targetStartTime = Date.now();
     },
     checkAnswer: (t, a) => t === a,
     onTick: (timeString) => {
@@ -347,8 +349,24 @@ async function boot() {
 function handleAnswer(midiNote) {
     const ok = game.answer(midiNote);
     if (ok == null) return;
-    ui.flash(midiNote, ok);
+    
+    // Get the latest response time for feedback
+    const responseTime = game.responseTimes[game.responseTimes.length - 1];
+    const isFast = responseTime < 1500; // Less than 1.5 seconds is considered fast
+    
+    // Debug logging
+    console.log(`Response time: ${responseTime}ms, isFast: ${isFast}, correct: ${ok}`);
+    
+    // Show fast response feedback for correct answers instead of normal flash
+    if (ok && isFast) {
+        ui.statusEl.textContent = "FAST! 🚀";
+        ui.statusEl.className = "status status-pill ok";
+        ui.statusEl.setAttribute("aria-live", "polite");
+    } else {
+        ui.flash(midiNote, ok);
+    }
     ui.flashScreen(ok ? "ok" : "bad");
+    
     if (ok) {
       if (midi.out) midi.sendNote(midiNote, 0.9, 180); // success ping
       // Play sustained audible feedback for correct answers
@@ -357,6 +375,7 @@ function handleAnswer(midiNote) {
       }
       setKeyColor(midiNote, "green");
       sendPrimaryGreen();
+      
       // Update progress bar based on correct answers
       updateProgressBar(game.correct);
       // Check if practice target is reached

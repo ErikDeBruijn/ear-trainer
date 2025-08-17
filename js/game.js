@@ -14,6 +14,7 @@ export class Game {
     reset() {
         this.score = 0; this.streak = 0; this.correct = 0; this.attempts = 0;
         this.practiceTime = store.getDailyPracticeTime(); this.target = null; this.noteCount = 0;
+        this.responseTimes = []; this.targetStartTime = null;
     }
     start() {
         this.reset(); this.state = "prompt";
@@ -32,7 +33,9 @@ export class Game {
     finish() { clearInterval(this.timer); this.state = "ended"; this.onEnd(this.summary()); }
     summary() {
         const accuracy = this.attempts ? (100 * this.correct / this.attempts) : 0;
-        return { score: this.score, streak: this.streak, accuracy };
+        const avgResponseTime = this.responseTimes.length ? 
+            this.responseTimes.reduce((sum, time) => sum + time, 0) / this.responseTimes.length : 0;
+        return { score: this.score, streak: this.streak, accuracy, avgResponseTime };
     }
     nextRound() {
         this.noteCount++;
@@ -42,8 +45,19 @@ export class Game {
     answer(midi) {
         if (this.state !== "prompt" && this.state !== "await") return;
         this.attempts++;
+        
+        // Calculate response time
+        const responseTime = this.targetStartTime ? Date.now() - this.targetStartTime : 0;
+        this.responseTimes.push(responseTime);
+        
         const ok = this.checkAnswer(this.target, midi);
-        if (ok) { this.correct++; this.score += 10; this.streak++; }
+        if (ok) { 
+            this.correct++; 
+            // Base score + time bonus (faster = higher bonus)
+            const timeBonus = Math.max(0, Math.floor((2000 - responseTime) / 100));
+            this.score += 10 + timeBonus;
+            this.streak++; 
+        }
         else { this.score = Math.max(0, this.score - 5); this.streak = 0; }
         return ok;
     }
