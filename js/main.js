@@ -22,6 +22,22 @@ let resolutionFrequency = 1.0;
 
 function pick() { return randomNoteInKey(keySet, range); }
 
+function updateProgressBar(correctAnswers) {
+    const progressFill = document.getElementById("progress-fill");
+    if (progressFill) {
+        // Calculate progress as percentage (30 correct answers = 100%)
+        const progress = (correctAnswers / 30) * 100;
+        progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    }
+}
+
+function resetProgressBar() {
+    const progressFill = document.getElementById("progress-fill");
+    if (progressFill) {
+        progressFill.style.width = "0%";
+    }
+}
+
 const game = new Game({
     pickNote: pick,
     onTarget: async (m) => {
@@ -39,10 +55,14 @@ const game = new Game({
         }
     },
     checkAnswer: (t, a) => t === a,
-    onTick: (sec) => ui.updateHUD({ timer: sec }),
+    onTick: (sec) => {
+        ui.updateHUD({ timer: sec });
+    },
     onEnd: (sum) => {
         ui.updateHUD({ accuracy: sum.accuracy });
         store.save({ best: Math.max(store.load().best||0, sum.score) });
+        // Reset progress bar after a short delay to show completion
+        setTimeout(() => resetProgressBar(), 2000);
     }
 });
 
@@ -51,6 +71,7 @@ async function boot() {
     document.getElementById("start").addEventListener("click", async () => {
         await audio.resume();
         setMaxBrightness(); // Set maximum brightness when game starts
+        resetProgressBar(); // Reset progress bar for new session
         game.start();
     });
     document.getElementById("pause").addEventListener("click", () => game.pause());
@@ -143,6 +164,8 @@ function handleAnswer(midiNote) {
       if (midi.out) midi.sendNote(midiNote, 0.9, 180); // success ping
       setKeyColor(midiNote, "green");
       sendPrimaryGreen();
+      // Update progress bar based on correct answers
+      updateProgressBar(game.correct);
       // Only move to next round if the answer is correct
       setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
     } else {

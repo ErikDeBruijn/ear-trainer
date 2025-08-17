@@ -65,7 +65,7 @@
                     <option value="0.5">Half the time</option>
                     <option value="0.33">Third of the time</option>
                     <option value="0.25">One in four times</option>
-                    <option value="0.0">Only the first one</option>
+                    <option value="0.0001">Only the first one</option>
                 </select>
             </label>
             <button id="start" class="primary">Start</button>
@@ -84,6 +84,14 @@
             <div>Streak: <span id="streak">0</span></div>
             <div>Timer: <span id="timer">60</span>s</div>
             <div>Accuracy: <span id="acc">—</span></div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-label">Practice Progress</div>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
         </div>
         <div id="status" class="status"></div>
     </section>

@@ -14,6 +14,9 @@
 - [x] Don't display the target note on the keyboard because it gives away the answer
 - [x] Play "ta da" pattern where "da" is the home/root note to emphasize it
 - [x] Add option to control resolution frequency (always/half/third of the time) with replay always audible, ta-da at 20% less volume
+- [x] Show a progress bar for the current practice/training run that updates as you go with animated progress (based on correct answers, not time)
+- [ ] Remember settings such as all dropdown selections (key, range, resolution) in `localStorage`
+- [ ] Remove the "Wrong answer sound" option and replace it with an "Audible response" that enables us to hear whether we guessed correctly (options: "Correct answer only" / "Always").
 - [ ] Make average response times part of the score. Give feedback "FAST!" when the user was fast.
 - [ ] Press a key (note) to start with that note as the root note (keeping the range within C3-C4)
 - [ ] Clamp range to valid white-key `min` for keyboard widget
