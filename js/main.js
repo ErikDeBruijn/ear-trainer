@@ -12,29 +12,79 @@ const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
 const ui = new UI();
 const audio = new AudioEngine();
 
+// Load saved settings from localStorage
+const savedSettings = store.load();
+
+// Initialize dropdowns with saved values or defaults
+function initializeSettings() {
+    const keySelect = document.getElementById("key-select");
+    const rangeSelect = document.getElementById("range-select");
+    const resolutionSelect = document.getElementById("resolution-frequency");
+    const wrongSelect = document.getElementById("wrong-mode");
+    const tonicSelect = document.getElementById("tonic-mode");
+
+    // Restore saved values
+    if (savedSettings.keySelect) keySelect.value = savedSettings.keySelect;
+    if (savedSettings.rangeSelect) rangeSelect.value = savedSettings.rangeSelect;
+    if (savedSettings.resolutionFrequency) resolutionSelect.value = savedSettings.resolutionFrequency;
+    if (savedSettings.wrongMode) wrongSelect.value = savedSettings.wrongMode;
+    if (savedSettings.tonicMode) tonicSelect.value = savedSettings.tonicMode;
+}
+
+// Initialize settings before parsing values
+initializeSettings();
+
+// Helper function to save current settings to localStorage
+function saveSettings() {
+    const currentSettings = store.load();
+    const newSettings = {
+        ...currentSettings,
+        keySelect: document.getElementById("key-select").value,
+        rangeSelect: document.getElementById("range-select").value,
+        resolutionFrequency: document.getElementById("resolution-frequency").value,
+        wrongMode: document.getElementById("wrong-mode").value,
+        tonicMode: document.getElementById("tonic-mode").value
+    };
+    store.save(newSettings);
+}
+
 let keySet = parseKey(document.getElementById("key-select").value);
 let range = rangeToMidi(document.getElementById("range-select").value);
 ui.setKeyboardRange(range[0], range[1]);
 setScaleColors(keySet, range[0], range[1]);
-let wrongMode = "silent";
-let tonicMode = "before-target";
-let resolutionFrequency = 1.0;
+let wrongMode = document.getElementById("wrong-mode").value || "silent";
+let tonicMode = document.getElementById("tonic-mode").value || "before-target";
+let resolutionFrequency = parseFloat(document.getElementById("resolution-frequency").value) || 1.0;
 
 function pick() { return randomNoteInKey(keySet, range); }
 
 function updateProgressBar(correctAnswers) {
     const progressFill = document.getElementById("progress-fill");
+    const progressText = document.getElementById("progress-text");
+    const targetAnswers = 30;
+
     if (progressFill) {
         // Calculate progress as percentage (30 correct answers = 100%)
-        const progress = (correctAnswers / 30) * 100;
+        const progress = (correctAnswers / targetAnswers) * 100;
         progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    }
+
+    if (progressText) {
+        const remaining = Math.max(0, targetAnswers - correctAnswers);
+        progressText.textContent = `(${correctAnswers}/${targetAnswers} - ${remaining} left)`;
     }
 }
 
 function resetProgressBar() {
     const progressFill = document.getElementById("progress-fill");
+    const progressText = document.getElementById("progress-text");
+
     if (progressFill) {
         progressFill.style.width = "0%";
+    }
+
+    if (progressText) {
+        progressText.textContent = "(0/30 - 30 left)";
     }
 }
 
@@ -86,32 +136,43 @@ async function boot() {
         clearRange(range[0], range[1]);
         setScaleColors(keySet, range[0], range[1]);
         setRootKey(e.target.value);
+        saveSettings();
     });
     document.getElementById("range-select").addEventListener("change", (e)=>{
         range = rangeToMidi(e.target.value);
         ui.setKeyboardRange(range[0], range[1]);
         clearRange(range[0], range[1]);
         setScaleColors(keySet, range[0], range[1]);
+        saveSettings();
     });
 
     // Wrong answer mode selector
     const wrongSel = document.getElementById("wrong-mode");
     if (wrongSel) {
-      wrongSel.addEventListener("change", e => { wrongMode = e.target.value; });
+      wrongSel.addEventListener("change", e => { 
+        wrongMode = e.target.value; 
+        saveSettings();
+      });
       wrongMode = wrongSel.value || "silent";
     }
 
     // Tonic reference mode selector
     const tonicSel = document.getElementById("tonic-mode");
     if (tonicSel) {
-      tonicSel.addEventListener("change", e => { tonicMode = e.target.value; });
+      tonicSel.addEventListener("change", e => { 
+        tonicMode = e.target.value; 
+        saveSettings();
+      });
       tonicMode = tonicSel.value || "before-target";
     }
 
     // Resolution frequency selector
     const resolutionSel = document.getElementById("resolution-frequency");
     if (resolutionSel) {
-      resolutionSel.addEventListener("change", e => { resolutionFrequency = parseFloat(e.target.value); });
+      resolutionSel.addEventListener("change", e => { 
+        resolutionFrequency = parseFloat(e.target.value); 
+        saveSettings();
+      });
       resolutionFrequency = parseFloat(resolutionSel.value) || 1.0;
     }
 

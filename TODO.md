@@ -15,7 +15,10 @@
 - [x] Play "ta da" pattern where "da" is the home/root note to emphasize it
 - [x] Add option to control resolution frequency (always/half/third of the time) with replay always audible, ta-da at 20% less volume
 - [x] Show a progress bar for the current practice/training run that updates as you go with animated progress (based on correct answers, not time)
-- [ ] Remember settings such as all dropdown selections (key, range, resolution) in `localStorage`
+- [x] Remember settings such as all dropdown selections (key, range, resolution) in `localStorage`
+- [x] Make the progress bar section also show how many are left in the current run
+- [ ] Remove the time limit and just show how long the user has been practicing in total (e.g., "Practice time: 3:45"), encourage with feedback to go for 10 minutes at least.
+- [ ] The active notes (part of the current key) should be highlighted much more, on the keyboard.
 - [ ] Remove the "Wrong answer sound" option and replace it with an "Audible response" that enables us to hear whether we guessed correctly (options: "Correct answer only" / "Always").
 - [ ] Make average response times part of the score. Give feedback "FAST!" when the user was fast.
 - [ ] Press a key (note) to start with that note as the root note (keeping the range within C3-C4)
