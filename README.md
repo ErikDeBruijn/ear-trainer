@@ -2,6 +2,8 @@
 
 Single-page ear trainer that plays a target note and checks your answer from a MIDI keyboard (or on-screen). Minimal, modular, ROLI-friendly.
 
+![Ear Trainer Interface](ear-trainer-ui.png)
+
 ## Quick start
 [Try it live](https://erikdebruijn.github.io/ear-trainer/)
 
