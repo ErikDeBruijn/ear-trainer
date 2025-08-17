@@ -194,7 +194,7 @@ const game = new Game({
 
         // Reset button to Start state when game ends
         const startPauseBtn = document.getElementById("start-pause");
-        startPauseBtn.textContent = "Start";
+        startPauseBtn.textContent = "▶";
         startPauseBtn.className = "primary";
         
         // Set grey lighting for end state
@@ -233,10 +233,10 @@ async function boot() {
                 midi.out.send(frame);
             }
             setScaleColors(keySet, range[0], range[1]);
-            startPauseBtn.textContent = "Pause";
+            startPauseBtn.textContent = "⏹";
             startPauseBtn.className = "secondary";
         } else {
-            // Pausing the game
+            // Stopping the game
             game.pause();
             // Set grey lighting for paused state
             if (midi.out) {
@@ -244,7 +244,7 @@ async function boot() {
                 midi.out.send(frame);
             }
             setPausedColors(range[0], range[1]);
-            startPauseBtn.textContent = "Start";
+            startPauseBtn.textContent = "▶";
             startPauseBtn.className = "primary";
         }
     });
@@ -362,9 +362,6 @@ function handleAnswer(midiNote) {
     // Get the latest response time for feedback
     const responseTime = game.responseTimes[game.responseTimes.length - 1];
     const isFast = responseTime < 1500; // Less than 1.5 seconds is considered fast
-    
-    // Debug logging
-    console.log(`Response time: ${responseTime}ms, isFast: ${isFast}, correct: ${ok}`);
     
     // Show fast response feedback for correct answers instead of normal flash
     if (ok && isFast) {
