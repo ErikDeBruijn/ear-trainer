@@ -22,6 +22,7 @@ function initializeSettings() {
     const resolutionSelect = document.getElementById("resolution-frequency");
     const wrongSelect = document.getElementById("wrong-mode");
     const tonicSelect = document.getElementById("tonic-mode");
+    const practiceTargetSelect = document.getElementById("practice-target");
 
     // Restore saved values
     if (savedSettings.keySelect) keySelect.value = savedSettings.keySelect;
@@ -29,6 +30,53 @@ function initializeSettings() {
     if (savedSettings.resolutionFrequency) resolutionSelect.value = savedSettings.resolutionFrequency;
     if (savedSettings.wrongMode) wrongSelect.value = savedSettings.wrongMode;
     if (savedSettings.tonicMode) tonicSelect.value = savedSettings.tonicMode;
+    if (savedSettings.practiceTarget) practiceTargetSelect.value = savedSettings.practiceTarget;
+
+    // Initialize settings panel state
+    initializeSettingsPanel();
+}
+
+// Initialize settings panel collapse/expand state
+function initializeSettingsPanel() {
+    const settingsToggle = document.getElementById("settings-toggle");
+    const settingsPanel = document.getElementById("settings-panel");
+    const settingsIcon = document.querySelector(".settings-toggle-icon");
+
+    // Load saved state (default to collapsed)
+    const isExpanded = !savedSettings.settingsCollapsed;
+
+    if (isExpanded) {
+        settingsPanel.classList.add("expanded");
+        settingsToggle.classList.remove("collapsed");
+        settingsIcon.textContent = "▼";
+    } else {
+        settingsToggle.classList.add("collapsed");
+        settingsIcon.textContent = "▶";
+    }
+
+    // Add click handler
+    settingsToggle.addEventListener("click", () => {
+        const isCurrentlyExpanded = settingsPanel.classList.contains("expanded");
+
+        if (isCurrentlyExpanded) {
+            // Collapse
+            settingsPanel.classList.remove("expanded");
+            settingsToggle.classList.add("collapsed");
+            settingsIcon.textContent = "▶";
+        } else {
+            // Expand
+            settingsPanel.classList.add("expanded");
+            settingsToggle.classList.remove("collapsed");
+            settingsIcon.textContent = "▼";
+        }
+
+        // Save state
+        const currentSettings = store.load();
+        store.save({
+            ...currentSettings,
+            settingsCollapsed: isCurrentlyExpanded
+        });
+    });
 }
 
 // Initialize settings before parsing values
@@ -43,7 +91,8 @@ function saveSettings() {
         rangeSelect: document.getElementById("range-select").value,
         resolutionFrequency: document.getElementById("resolution-frequency").value,
         wrongMode: document.getElementById("wrong-mode").value,
-        tonicMode: document.getElementById("tonic-mode").value
+        tonicMode: document.getElementById("tonic-mode").value,
+        practiceTarget: document.getElementById("practice-target").value
     };
     store.save(newSettings);
 }
@@ -55,23 +104,23 @@ setScaleColors(keySet, range[0], range[1]);
 let wrongMode = document.getElementById("wrong-mode").value || "silent";
 let tonicMode = document.getElementById("tonic-mode").value || "before-target";
 let resolutionFrequency = parseFloat(document.getElementById("resolution-frequency").value) || 1.0;
+let practiceTarget = parseInt(document.getElementById("practice-target").value) || 20;
 
 function pick() { return randomNoteInKey(keySet, range); }
 
 function updateProgressBar(correctAnswers) {
     const progressFill = document.getElementById("progress-fill");
     const progressText = document.getElementById("progress-text");
-    const targetAnswers = 30;
 
     if (progressFill) {
-        // Calculate progress as percentage (30 correct answers = 100%)
-        const progress = (correctAnswers / targetAnswers) * 100;
+        // Calculate progress as percentage
+        const progress = (correctAnswers / practiceTarget) * 100;
         progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
     }
 
     if (progressText) {
-        const remaining = Math.max(0, targetAnswers - correctAnswers);
-        progressText.textContent = `(${correctAnswers}/${targetAnswers} - ${remaining} left)`;
+        const remaining = Math.max(0, practiceTarget - correctAnswers);
+        progressText.textContent = `(${correctAnswers}/${practiceTarget} - ${remaining} left)`;
     }
 }
 
@@ -84,7 +133,7 @@ function resetProgressBar() {
     }
 
     if (progressText) {
-        progressText.textContent = "(0/30 - 30 left)";
+        progressText.textContent = `(0/${practiceTarget} - ${practiceTarget} left)`;
     }
 }
 
@@ -174,6 +223,17 @@ async function boot() {
         saveSettings();
       });
       resolutionFrequency = parseFloat(resolutionSel.value) || 1.0;
+    }
+
+    // Practice target selector
+    const practiceTargetSel = document.getElementById("practice-target");
+    if (practiceTargetSel) {
+      practiceTargetSel.addEventListener("change", e => { 
+        practiceTarget = parseInt(e.target.value); 
+        resetProgressBar(); // Update progress bar display with new target
+        saveSettings();
+      });
+      practiceTarget = parseInt(practiceTargetSel.value) || 20;
     }
 
     // Screen keyboard input

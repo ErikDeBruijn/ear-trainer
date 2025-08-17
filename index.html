@@ -15,59 +15,78 @@
 <div class="container">
     <header>
         <div class="title">Ear Trainer — v0.1</div>
-        <div class="controls">
-            <label>Key
-                <select id="key-select">
-                    <option value="C-major">C major</option>
-                    <option value="G-major">G major</option>
-                    <option value="D-major">D major</option>
-                    <option value="F#-major">F# major</option>
-                    <option value="A-minor">A minor</option>
-                    <option value="E-minor">E minor</option>
-                    <option value="F#-minor">F# minor</option>
-                </select>
-            </label>
-            <label>Range
-                <select id="range-select">
-                  <optgroup label="Single octave">
-                    <option value="C3-C4">C3–C4 (1 octave)</option>
-                    <option value="C4-C5">C4–C5 (1 octave)</option>
-                    <option value="C5-C6">C5–C6 (1 octave)</option>
-                  </optgroup>
-                  <optgroup label="Two octaves">
-                    <option value="C2-C4">C2–C4 (2 octaves)</option>
-                    <option value="C3-C5" selected>C3–C5 (2 octaves)</option>
-                    <option value="C4-C6">C4–C6 (2 octaves)</option>
-                  </optgroup>
-                </select>
-            </label>
-            <label>MIDI In
-                <select id="midi-in"></select>
-            </label>
-            <label>MIDI Out
-                <select id="midi-out"></select>
-            </label>
-            <label>Wrong answer sound
-                <select id="wrong-mode">
-                    <option value="silent">Silent</option>
-                    <option value="play-pressed">Play pressed note</option>
-                </select>
-            </label>
-            <label>Play home note first
-                <select id="tonic-mode">
-                    <option value="before-target" selected>Yes</option>
-                    <option value="off">No</option>
-                </select>
-            </label>
-            <label>Resolution frequency
-                <select id="resolution-frequency">
-                    <option value="1.0" selected>Always</option>
-                    <option value="0.5">Half the time</option>
-                    <option value="0.33">Third of the time</option>
-                    <option value="0.25">One in four times</option>
-                    <option value="0.0001">Only the first one</option>
-                </select>
-            </label>
+        <div class="settings-section">
+            <button id="settings-toggle" class="settings-toggle">
+                <span class="settings-toggle-text">Settings</span>
+                <span class="settings-toggle-icon">▼</span>
+            </button>
+            <div id="settings-panel" class="settings-panel">
+                <div class="controls">
+                    <label>Key
+                        <select id="key-select">
+                            <option value="C-major">C major</option>
+                            <option value="G-major">G major</option>
+                            <option value="D-major">D major</option>
+                            <option value="F#-major">F# major</option>
+                            <option value="A-minor">A minor</option>
+                            <option value="E-minor">E minor</option>
+                            <option value="F#-minor">F# minor</option>
+                        </select>
+                    </label>
+                    <label>Range
+                        <select id="range-select">
+                          <optgroup label="Single octave">
+                            <option value="C3-C4">C3–C4 (1 octave)</option>
+                            <option value="C4-C5">C4–C5 (1 octave)</option>
+                            <option value="C5-C6">C5–C6 (1 octave)</option>
+                          </optgroup>
+                          <optgroup label="Two octaves">
+                            <option value="C2-C4">C2–C4 (2 octaves)</option>
+                            <option value="C3-C5" selected>C3–C5 (2 octaves)</option>
+                            <option value="C4-C6">C4–C6 (2 octaves)</option>
+                          </optgroup>
+                        </select>
+                    </label>
+                    <label>MIDI In
+                        <select id="midi-in"></select>
+                    </label>
+                    <label>MIDI Out
+                        <select id="midi-out"></select>
+                    </label>
+                    <label>Wrong answer sound
+                        <select id="wrong-mode">
+                            <option value="silent">Silent</option>
+                            <option value="play-pressed">Play pressed note</option>
+                        </select>
+                    </label>
+                    <label>Play home note first
+                        <select id="tonic-mode">
+                            <option value="before-target" selected>Yes</option>
+                            <option value="off">No</option>
+                        </select>
+                    </label>
+                    <label>Resolution frequency
+                        <select id="resolution-frequency">
+                            <option value="1.0" selected>Always</option>
+                            <option value="0.5">Half the time</option>
+                            <option value="0.33">Third of the time</option>
+                            <option value="0.25">One in four times</option>
+                            <option value="0.0001">Only the first one</option>
+                        </select>
+                    </label>
+                    <label>Practice target
+                        <select id="practice-target">
+                            <option value="10">10 rounds</option>
+                            <option value="20" selected>20 rounds</option>
+                            <option value="30">30 rounds</option>
+                            <option value="50">50 rounds</option>
+                            <option value="100">100 rounds</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="game-controls">
             <button id="start" class="primary">Start</button>
             <button id="pause" class="secondary">Pause</button>
             <button id="replay" class="secondary">Replay</button>
@@ -88,7 +107,7 @@
 
         <!-- Progress Bar -->
         <div class="progress-container">
-            <div class="progress-label">Practice Progress <span id="progress-text">(0/30 - 30 left)</span></div>
+            <div class="progress-label">Practice Progress <span id="progress-text">(0/20 - 20 left)</span></div>
             <div class="progress-bar">
                 <div id="progress-fill" class="progress-fill"></div>
             </div>
