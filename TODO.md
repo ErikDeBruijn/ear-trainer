@@ -12,6 +12,8 @@
 ## 🧰 Fix/Polish
 - [x] Visuals: success/fail glow on keys (CSS) instead of status text
 - [x] Don't display the target note on the keyboard because it gives away the answer
+- [ ] Make the prompt (root key) a bit longer (e.g., 1.5s) to emphasize it's the target note
+- [ ] Make average response times part of the score. Give feedback "FAST!" when the user was fast.
 - [ ] Press a key (note) to start with that note as the root note (keeping the range within C3-C4)
 - [ ] Allow the resolution (audible) to be heard before the target note
 - [ ] Clamp range to valid white-key `min` for keyboard widget
@@ -21,6 +23,7 @@
 
 ## 🎯 Next (v0.2)
 - [ ] Difficulty modes (subset degrees vs. full scale vs. chromatic)
+- [ ] Keep track of accuracy & response times in a nice visual way (e.g., bar chart), also, whether you practiced with a streak multiple days in a row.
 - [ ] Per-degree stats & response-time histogram
 - [ ] Range picker with draggable handles on piano
 - [ ] Sampler piano (Tone.Sampler) for acoustic sound

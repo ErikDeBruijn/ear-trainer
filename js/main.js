@@ -29,7 +29,11 @@ const game = new Game({
             const tonic = keySet[0] + Math.floor(m / 12) * 12;
             await audio.playTonicThenTarget(tonic, m);
         } else {
-            audio.playMidiNote(m, 0.35);
+            // Store current target for replay (no tonic in this mode)
+            audio.currentTonic = null;
+            audio.currentTarget = m;
+            // Play target note but don't send to MIDI out
+            audio.playMidiNote(m, 0.35, false);
         }
     },
     checkAnswer: (t, a) => t === a,
@@ -48,6 +52,10 @@ async function boot() {
         game.start();
     });
     document.getElementById("pause").addEventListener("click", () => game.pause());
+    document.getElementById("replay").addEventListener("click", async () => {
+        await audio.resume();
+        audio.replayCurrentNotes();
+    });
 
     // UI selects
     document.getElementById("key-select").addEventListener("change", (e)=>{
