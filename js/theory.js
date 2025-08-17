@@ -30,5 +30,27 @@ export function randomNoteInKey(keySet, [low, highExclusive]) {
     for (let m = low; m < highExclusive; m++) {
         if (keySet.includes(m % 12)) candidates.push(m);
     }
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    console.log(`randomNoteInKey: keySet=${keySet}, range=[${low},${highExclusive}), candidates=${candidates.length}, chosen=${chosen} (${chosen%12})`);
+    return chosen;
+}
+
+export function midiNoteToKeySignature(midiNote) {
+    const noteClass = midiNote % 12;
+    // Map note classes to available key signatures (prefer major, fallback to relative minor)
+    const keyMap = {
+        0: "C-major",    // C -> C major
+        1: "C-major",    // C#/Db -> C major (closest)
+        2: "D-major",    // D -> D major
+        3: "E-minor",    // D#/Eb -> E minor (relative of G major)
+        4: "E-minor",    // E -> E minor
+        5: "F#-major",   // F -> F# major (closest available)
+        6: "F#-major",   // F#/Gb -> F# major
+        7: "G-major",    // G -> G major
+        8: "A-minor",    // G#/Ab -> A minor (closest)
+        9: "A-minor",    // A -> A minor
+        10: "A-minor",   // A#/Bb -> A minor (closest)
+        11: "G-major"    // B -> G major (closest)
+    };
+    return keyMap[noteClass];
 }

@@ -1,7 +1,7 @@
 // js/main.js
 import { midi } from "./midi.js";
 import { AudioEngine } from "./audio.js";
-import { parseKey, rangeToMidi, randomNoteInKey } from "./theory.js";
+import { parseKey, rangeToMidi, randomNoteInKey, midiNoteToKeySignature } from "./theory.js";
 import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
@@ -102,6 +102,7 @@ let keySet = parseKey(document.getElementById("key-select").value);
 let range = rangeToMidi(document.getElementById("range-select").value);
 ui.setKeyboardRange(range[0], range[1]);
 setScaleColors(keySet, range[0], range[1]);
+ui.highlightScaleNotes(keySet, range[0], range[1]);
 let audibleResponse = document.getElementById("audible-response").value || "correct-only";
 let homeNoteFrequency = document.getElementById("home-note-frequency").value || "always";
 let practiceTarget = parseInt(document.getElementById("practice-target").value) || 10;
@@ -152,6 +153,7 @@ function resetProgressBar() {
 const game = new Game({
     pickNote: pick,
     onTarget: async (m) => {
+        console.log(`Target note: MIDI ${m}, note class: ${m % 12}, keySet:`, keySet, `in key: ${keySet.includes(m % 12)}`);
         ui.clearStatus();
         if (shouldPlayHomeNote(game.noteCount, homeNoteFrequency)) {
             const tonic = keySet[0] + Math.floor(m / 12) * 12;
@@ -260,9 +262,18 @@ async function boot() {
     // UI selects
     document.getElementById("key-select").addEventListener("change", (e)=>{
         keySet = parseKey(e.target.value);
+        
+        // Educational logging for music theory learning
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const keyNotes = keySet.map(noteClass => noteNames[noteClass]);
+        console.log(`Key: ${e.target.value}`);
+        console.log(`Scale degrees (note classes):`, keySet);
+        console.log(`Note names in this key:`, keyNotes);
+        
         clearRange(range[0], range[1]);
         setScaleColors(keySet, range[0], range[1]);
         setRootKey(e.target.value);
+        ui.highlightScaleNotes(keySet, range[0], range[1]);
         saveSettings();
     });
     document.getElementById("range-select").addEventListener("change", (e)=>{
@@ -270,6 +281,7 @@ async function boot() {
         ui.setKeyboardRange(range[0], range[1]);
         clearRange(range[0], range[1]);
         setScaleColors(keySet, range[0], range[1]);
+        ui.highlightScaleNotes(keySet, range[0], range[1]);
         saveSettings();
     });
 
@@ -367,8 +379,34 @@ async function boot() {
 }
 
 function handleAnswer(midiNote) {
-    // Auto-start game if idle when key is pressed
+    // Set root note and start game if idle when key is pressed
     if (game.state === "idle") {
+        // Determine key signature from pressed note
+        const newKeySignature = midiNoteToKeySignature(midiNote);
+        
+        // Update key selection
+        const keySelect = document.getElementById("key-select");
+        keySelect.value = newKeySignature;
+        keySet = parseKey(newKeySignature);
+        
+        // Set range to C3-C4 to keep practice focused
+        const rangeSelect = document.getElementById("range-select");
+        rangeSelect.value = "C3-C4";
+        range = rangeToMidi("C3-C4");
+        ui.setKeyboardRange(range[0], range[1]);
+        
+        // Update lighting and UI
+        clearRange(range[0], range[1]);
+        setScaleColors(keySet, range[0], range[1]);
+        setRootKey(newKeySignature);
+        ui.highlightScaleNotes(keySet, range[0], range[1]);
+        
+        console.log(`Set key to ${newKeySignature}, keySet:`, keySet);
+        
+        // Save settings
+        saveSettings();
+        
+        // Start the game
         document.getElementById("start-pause").click();
         return;
     }
