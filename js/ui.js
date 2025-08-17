@@ -67,4 +67,15 @@ export class UI {
         if (timer != null) this.timerEl.textContent = timer;
         if (accuracy != null) this.accEl.textContent = isNaN(accuracy) ? "—" : `${Math.round(accuracy)}%`;
     }
+
+    showConfetti() {
+        // Use canvas-confetti library
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+    }
 }

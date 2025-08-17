@@ -177,6 +177,9 @@ const game = new Game({
         ui.updateHUD({ accuracy: sum.accuracy });
         store.save({ best: Math.max(store.load().best||0, sum.score) });
 
+        // Show confetti celebration
+        ui.showConfetti();
+
         // Provide encouragement feedback based on practice time
         const practiceMinutes = Math.floor(game.practiceTime / 60);
         let encouragementMessage = "Practice session complete! ";
