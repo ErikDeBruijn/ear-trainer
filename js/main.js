@@ -204,6 +204,13 @@ const game = new Game({
     }
 });
 
+// Initialize timer display with stored daily practice time
+const dailyPracticeTime = store.getDailyPracticeTime();
+const minutes = Math.floor(dailyPracticeTime / 60);
+const seconds = dailyPracticeTime % 60;
+const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+ui.updateHUD({ timer: timeString });
+
 async function boot() {
     // resume audio on user gesture
     const startPauseBtn = document.getElementById("start-pause");

@@ -1,4 +1,6 @@
 // js/game.js
+import { store } from "./storage.js";
+
 export class Game {
     constructor({pickNote, onTarget, checkAnswer, onTick, onEnd}) {
         this.state = "idle";
@@ -11,7 +13,7 @@ export class Game {
     }
     reset() {
         this.score = 0; this.streak = 0; this.correct = 0; this.attempts = 0;
-        this.practiceTime = 0; this.target = null; this.noteCount = 0;
+        this.practiceTime = store.getDailyPracticeTime(); this.target = null; this.noteCount = 0;
     }
     start() {
         this.reset(); this.state = "prompt";
@@ -21,6 +23,7 @@ export class Game {
     pause() { if (this.timer) clearInterval(this.timer); this.state = "paused"; }
     tick() {
         this.practiceTime += 1; 
+        store.saveDailyPracticeTime(this.practiceTime);
         const minutes = Math.floor(this.practiceTime / 60);
         const seconds = this.practiceTime % 60;
         const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
