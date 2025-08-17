@@ -30,6 +30,9 @@ function initializeSettings() {
     if (savedSettings.homeNoteFrequency) homeNoteSelect.value = savedSettings.homeNoteFrequency;
     if (savedSettings.practiceTarget) practiceTargetSelect.value = savedSettings.practiceTarget;
 
+    const volumeSlider = document.getElementById("volume-slider");
+    if (savedSettings.volume !== undefined) volumeSlider.value = savedSettings.volume;
+
     // Initialize settings panel state
     initializeSettingsPanel();
 }
@@ -89,7 +92,8 @@ function saveSettings() {
         rangeSelect: document.getElementById("range-select").value,
         audibleResponse: document.getElementById("audible-response").value,
         homeNoteFrequency: document.getElementById("home-note-frequency").value,
-        practiceTarget: document.getElementById("practice-target").value
+        practiceTarget: document.getElementById("practice-target").value,
+        volume: document.getElementById("volume-slider").value
     };
     store.save(newSettings);
 }
@@ -298,6 +302,19 @@ async function boot() {
         saveSettings();
       });
       practiceTarget = parseInt(practiceTargetSel.value) || 10;
+    }
+
+    // Volume slider
+    const volumeSlider = document.getElementById("volume-slider");
+    if (volumeSlider) {
+        volumeSlider.addEventListener("input", e => {
+            const volume = parseInt(e.target.value);
+            audio.setMasterVolume(volume);
+            saveSettings();
+        });
+        // Set initial volume
+        const initialVolume = parseInt(volumeSlider.value);
+        audio.setMasterVolume(initialVolume);
     }
 
     // Screen keyboard input

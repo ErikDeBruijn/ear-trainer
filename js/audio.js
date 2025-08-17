@@ -3,17 +3,24 @@ import { midi } from "./midi.js";
 
 export class AudioEngine {
     constructor() {
+        this.masterGain = new Tone.Gain(0.7).toDestination();
         this.synth = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.2, release: 0.2 }})
-            .toDestination();
+            .connect(this.masterGain);
         // Polyphonic synth for sustained audible response notes
         this.polySynth = new Tone.PolySynth(Tone.Synth, { 
             oscillator: { type: "triangle" }, 
             envelope: { attack: 0.005, decay: 0.1, sustain: 0.8, release: 0.3 }
-        }).toDestination();
+        }).connect(this.masterGain);
         this.currentTonic = null;
         this.currentTarget = null;
         this.currentResolutionPlayed = false; // Track if resolution was played for replay
         this.sustainedNotes = new Map(); // Track sustained notes for audible response
+    }
+
+    setMasterVolume(volumePercent) {
+        // Convert 0-100 percent to 0-1 gain scale
+        const gain = volumePercent / 100;
+        this.masterGain.gain.value = gain;
     }
     async resume() { await Tone.start(); }
     async playMidiNote(midiNumber, duration = 0.3, sendToMidi = true, volume = 0) {

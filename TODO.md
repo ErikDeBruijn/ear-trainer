@@ -23,15 +23,12 @@
 - [x] The active notes (part of the current key) should be highlighted much more, on the keyboard.
 - [x] Remove the "Wrong answer sound" option and replace it with an "Audible response" that enables us to hear whether we guessed correctly (options: "Correct answer only" / "Always").
 - [x] The practice time of the day isn't remembered when refreshing the page, so it should be stored in `localStorage` instead.
-- [ ] Confetti on finishing
-- [ ] Start by pressing a midi key (or on-screen keyboard) to start the practice run.
-- [ ] Console message: "The 'velocity' option is deprecated. Use 'attack' instead."
-- [ ] Make average response times part of the score. Give feedback "FAST!" when the user was fast.
-- [ ] In a game, the Start button should be "muted". Other buttons should be disabled, too, such as pause/replay when not playing yet. Change them into nice symbols. 
+- [x] Confetti on finishing
+- [x] Start by pressing a midi key (or on-screen keyboard) to start the practice run.
+- [x] Console message: "The 'velocity' option is deprecated. Use 'attack' instead."
+- [x] Make average response times part of the score. Give feedback "FAST!" when the user was fast.- [ ] In a game, the Start button should be "muted". Other buttons should be disabled, too, such as pause/replay when not playing yet. Change them into nice symbols. 
 - [ ] Pressing a key (note) to start with that note as the root note (keeping the range within C3-C4)
-- [ ] Clamp range to valid white-key `min` for keyboard widget
 - [ ] Debounce double answers on overlapping note-ons
-- [ ] Relegate MIDI in/out to settings modal (to be displayed when no MIDI devices is chosen/remembered or the connection not present)
 - [ ] Better error UI when MIDI permission denied
 
 ## 🎯 Next (v0.2)
