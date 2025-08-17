@@ -39,6 +39,6 @@ export const midi = {
     // Hints/tones can play on any selected output, regardless of manufacturer.
     sendNote(number = 60, velocity = 0.8, durationMs = 300) {
         if (!this.out) return;
-        this.out.playNote(number, { velocity, duration: durationMs });
+        this.out.playNote(number, { attack: velocity, duration: durationMs });
     }
 };
