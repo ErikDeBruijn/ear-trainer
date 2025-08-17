@@ -30,6 +30,7 @@
 - [ ] Pressing a key (note) to start with that note as the root note (keeping the range within C3-C4)
 - [ ] Debounce double answers on overlapping note-ons
 - [ ] Better error UI when MIDI permission denied
+- [ ] Confetti also when playing for 10 minutes that day
 
 ## 🎯 Next (v0.2)
 - [ ] Difficulty modes (subset degrees vs. full scale vs. chromatic)
