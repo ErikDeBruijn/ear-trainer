@@ -126,6 +126,8 @@ function handleAnswer(midiNote) {
       if (midi.out) midi.sendNote(midiNote, 0.9, 180); // success ping
       setKeyColor(midiNote, "green");
       sendPrimaryGreen();
+      // Only move to next round if the answer is correct
+      setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
     } else {
       if (wrongMode === "play-pressed") {
         audio.playMidiNote(midiNote, 0.4);
@@ -136,7 +138,6 @@ function handleAnswer(midiNote) {
     // brief flash, then restore the scale coloring
     setTimeout(() => setScaleColors(keySet, range[0], range[1]), 300);
     ui.updateHUD({ score: game.score, streak: game.streak, accuracy: (100*game.correct/game.attempts) });
-    setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
 }
 
 boot();
