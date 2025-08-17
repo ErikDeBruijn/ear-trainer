@@ -5,7 +5,7 @@ import { parseKey, rangeToMidi, randomNoteInKey } from "./theory.js";
 import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
-import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange, sendPrimaryGreen, sendPrimaryRed, setRootKey, setMaxBrightness } from "./lumi.js";
+import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, setPausedColors, clearRange, sendPrimaryGreen, sendPrimaryRed, setRootKey, setMaxBrightness, buildPrimaryRGB } from "./lumi.js";
 
 const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
 
@@ -19,17 +19,15 @@ const savedSettings = store.load();
 function initializeSettings() {
     const keySelect = document.getElementById("key-select");
     const rangeSelect = document.getElementById("range-select");
-    const resolutionSelect = document.getElementById("resolution-frequency");
     const audibleResponseSelect = document.getElementById("audible-response");
-    const tonicSelect = document.getElementById("tonic-mode");
+    const homeNoteSelect = document.getElementById("home-note-frequency");
     const practiceTargetSelect = document.getElementById("practice-target");
 
     // Restore saved values
     if (savedSettings.keySelect) keySelect.value = savedSettings.keySelect;
     if (savedSettings.rangeSelect) rangeSelect.value = savedSettings.rangeSelect;
-    if (savedSettings.resolutionFrequency) resolutionSelect.value = savedSettings.resolutionFrequency;
     if (savedSettings.audibleResponse) audibleResponseSelect.value = savedSettings.audibleResponse;
-    if (savedSettings.tonicMode) tonicSelect.value = savedSettings.tonicMode;
+    if (savedSettings.homeNoteFrequency) homeNoteSelect.value = savedSettings.homeNoteFrequency;
     if (savedSettings.practiceTarget) practiceTargetSelect.value = savedSettings.practiceTarget;
 
     // Initialize settings panel state
@@ -89,9 +87,8 @@ function saveSettings() {
         ...currentSettings,
         keySelect: document.getElementById("key-select").value,
         rangeSelect: document.getElementById("range-select").value,
-        resolutionFrequency: document.getElementById("resolution-frequency").value,
         audibleResponse: document.getElementById("audible-response").value,
-        tonicMode: document.getElementById("tonic-mode").value,
+        homeNoteFrequency: document.getElementById("home-note-frequency").value,
         practiceTarget: document.getElementById("practice-target").value
     };
     store.save(newSettings);
@@ -102,11 +99,22 @@ let range = rangeToMidi(document.getElementById("range-select").value);
 ui.setKeyboardRange(range[0], range[1]);
 setScaleColors(keySet, range[0], range[1]);
 let audibleResponse = document.getElementById("audible-response").value || "correct-only";
-let tonicMode = document.getElementById("tonic-mode").value || "before-target";
-let resolutionFrequency = parseFloat(document.getElementById("resolution-frequency").value) || 1.0;
-let practiceTarget = parseInt(document.getElementById("practice-target").value) || 20;
+let homeNoteFrequency = document.getElementById("home-note-frequency").value || "always";
+let practiceTarget = parseInt(document.getElementById("practice-target").value) || 10;
 
 function pick() { return randomNoteInKey(keySet, range); }
+
+function shouldPlayHomeNote(noteCount, frequency) {
+    switch (frequency) {
+        case "always": return true;
+        case "every-2": return noteCount % 2 === 1;
+        case "every-3": return noteCount % 3 === 1;
+        case "every-4": return noteCount % 4 === 1;
+        case "first-only": return noteCount === 1;
+        case "never": return false;
+        default: return true;
+    }
+}
 
 function updateProgressBar(correctAnswers) {
     const progressFill = document.getElementById("progress-fill");
@@ -141,9 +149,9 @@ const game = new Game({
     pickNote: pick,
     onTarget: async (m) => {
         ui.clearStatus();
-        if (tonicMode === "before-target") {
+        if (shouldPlayHomeNote(game.noteCount, homeNoteFrequency)) {
             const tonic = keySet[0] + Math.floor(m / 12) * 12;
-            await audio.playTonicThenTarget(tonic, m, 0.5, 0.3, 0.35, resolutionFrequency);
+            await audio.playTonicThenTarget(tonic, m, 0.5, 0.3, 0.35, 1.0);
         } else {
             // Store current target for replay (no tonic in this mode)
             audio.currentTonic = null;
@@ -179,6 +187,18 @@ const game = new Game({
         }
         ui.updateStatus(encouragementMessage);
 
+        // Reset button to Start state when game ends
+        const startPauseBtn = document.getElementById("start-pause");
+        startPauseBtn.textContent = "Start";
+        startPauseBtn.className = "primary";
+        
+        // Set grey lighting for end state
+        if (midi.out) {
+            const frame = buildPrimaryRGB(64, 64, 64); // grey
+            midi.out.send(frame);
+        }
+        setPausedColors(range[0], range[1]);
+
         // Reset progress bar after a short delay to show completion
         setTimeout(() => resetProgressBar(), 2000);
     }
@@ -186,13 +206,36 @@ const game = new Game({
 
 async function boot() {
     // resume audio on user gesture
-    document.getElementById("start").addEventListener("click", async () => {
-        await audio.resume();
-        setMaxBrightness(); // Set maximum brightness when game starts
-        resetProgressBar(); // Reset progress bar for new session
-        game.start();
+    const startPauseBtn = document.getElementById("start-pause");
+    
+    startPauseBtn.addEventListener("click", async () => {
+        if (game.state === "idle" || game.state === "paused" || game.state === "ended") {
+            // Starting the game
+            await audio.resume();
+            setMaxBrightness(); // Set maximum brightness when game starts
+            resetProgressBar(); // Reset progress bar for new session
+            game.start();
+            // Set bright blue lighting to indicate "You're UP!"
+            if (midi.out) {
+                const frame = buildPrimaryRGB(0, 1, 255); // bright blue
+                midi.out.send(frame);
+            }
+            setScaleColors(keySet, range[0], range[1]);
+            startPauseBtn.textContent = "Pause";
+            startPauseBtn.className = "secondary";
+        } else {
+            // Pausing the game
+            game.pause();
+            // Set grey lighting for paused state
+            if (midi.out) {
+                const frame = buildPrimaryRGB(64, 64, 64); // grey
+                midi.out.send(frame);
+            }
+            setPausedColors(range[0], range[1]);
+            startPauseBtn.textContent = "Start";
+            startPauseBtn.className = "primary";
+        }
     });
-    document.getElementById("pause").addEventListener("click", () => game.pause());
     document.getElementById("replay").addEventListener("click", async () => {
         await audio.resume();
         audio.replayCurrentNotes();
@@ -214,34 +257,24 @@ async function boot() {
         saveSettings();
     });
 
-    // Wrong answer mode selector
-    const wrongSel = document.getElementById("wrong-mode");
-    if (wrongSel) {
-      wrongSel.addEventListener("change", e => { 
-        wrongMode = e.target.value; 
+    // Audible response selector
+    const audibleResponseSel = document.getElementById("audible-response");
+    if (audibleResponseSel) {
+      audibleResponseSel.addEventListener("change", e => { 
+        audibleResponse = e.target.value; 
         saveSettings();
       });
-      wrongMode = wrongSel.value || "silent";
+      audibleResponse = audibleResponseSel.value || "correct-only";
     }
 
-    // Tonic reference mode selector
-    const tonicSel = document.getElementById("tonic-mode");
-    if (tonicSel) {
-      tonicSel.addEventListener("change", e => { 
-        tonicMode = e.target.value; 
+    // Home note frequency selector
+    const homeNoteSel = document.getElementById("home-note-frequency");
+    if (homeNoteSel) {
+      homeNoteSel.addEventListener("change", e => { 
+        homeNoteFrequency = e.target.value; 
         saveSettings();
       });
-      tonicMode = tonicSel.value || "before-target";
-    }
-
-    // Resolution frequency selector
-    const resolutionSel = document.getElementById("resolution-frequency");
-    if (resolutionSel) {
-      resolutionSel.addEventListener("change", e => { 
-        resolutionFrequency = parseFloat(e.target.value); 
-        saveSettings();
-      });
-      resolutionFrequency = parseFloat(resolutionSel.value) || 1.0;
+      homeNoteFrequency = homeNoteSel.value || "always";
     }
 
     // Practice target selector
@@ -252,7 +285,7 @@ async function boot() {
         resetProgressBar(); // Update progress bar display with new target
         saveSettings();
       });
-      practiceTarget = parseInt(practiceTargetSel.value) || 20;
+      practiceTarget = parseInt(practiceTargetSel.value) || 10;
     }
 
     // Screen keyboard input
@@ -267,7 +300,13 @@ async function boot() {
         outputs.forEach(p => outSel.append(new Option(p.name, p.id)));
         inSel.addEventListener("change", (e) => {
             midi.setInById(e.target.value);
-            midi.onNote(ev => { if (ev.type === "on") handleAnswer(ev.note); });
+            midi.onNote(ev => { 
+                if (ev.type === "on") {
+                    handleAnswer(ev.note);
+                } else if (ev.type === "off") {
+                    handleNoteOff(ev.note);
+                }
+            });
         });
         outSel.addEventListener("change", (e) => {
           midi.setOutById(e.target.value);
@@ -279,7 +318,10 @@ async function boot() {
           }
         });
         // auto-select first ports if present
-        if (inputs[0]) { inSel.value = inputs[0].id; inSel.dispatchEvent(new Event("change")); }
+        if (inputs[0]) { 
+            inSel.value = inputs[0].id; 
+            inSel.dispatchEvent(new Event("change")); 
+        }
         if (outputs[0]) {
           outSel.value = outputs[0].id;
           outSel.dispatchEvent(new Event("change"));
@@ -302,6 +344,10 @@ function handleAnswer(midiNote) {
     ui.flashScreen(ok ? "ok" : "bad");
     if (ok) {
       if (midi.out) midi.sendNote(midiNote, 0.9, 180); // success ping
+      // Play sustained audible feedback for correct answers
+      if (audibleResponse === "correct-only" || audibleResponse === "always") {
+        audio.startSustainedNote(midiNote, -3); // Slightly quieter than default
+      }
       setKeyColor(midiNote, "green");
       sendPrimaryGreen();
       // Update progress bar based on correct answers
@@ -314,15 +360,27 @@ function handleAnswer(midiNote) {
         setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
       }
     } else {
-      if (wrongMode === "play-pressed") {
-        audio.playMidiNote(midiNote, 0.4);
+      if (audibleResponse === "always") {
+        audio.startSustainedNote(midiNote, -6); // Quieter for wrong answers
       }
       setKeyColor(midiNote, "red");
       sendPrimaryRed();
     }
     // brief flash, then restore the scale coloring
-    setTimeout(() => setScaleColors(keySet, range[0], range[1]), 300);
+    setTimeout(() => {
+        // Reset primary color to bright blue (default scale color)
+        if (midi.out) {
+            const frame = buildPrimaryRGB(0, 1, 255); // bright blue
+            midi.out.send(frame);
+        }
+        setScaleColors(keySet, range[0], range[1]);
+    }, 300);
     ui.updateHUD({ score: game.score, streak: game.streak, accuracy: (100*game.correct/game.attempts) });
+}
+
+function handleNoteOff(midiNote) {
+    // Stop sustained audible feedback when note is released
+    audio.stopSustainedNote(midiNote);
 }
 
 boot();

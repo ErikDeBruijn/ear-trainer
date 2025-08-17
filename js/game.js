@@ -11,7 +11,7 @@ export class Game {
     }
     reset() {
         this.score = 0; this.streak = 0; this.correct = 0; this.attempts = 0;
-        this.practiceTime = 0; this.target = null;
+        this.practiceTime = 0; this.target = null; this.noteCount = 0;
     }
     start() {
         this.reset(); this.state = "prompt";
@@ -32,6 +32,7 @@ export class Game {
         return { score: this.score, streak: this.streak, accuracy };
     }
     nextRound() {
+        this.noteCount++;
         this.target = this.pickNote();
         this.onTarget(this.target);
     }

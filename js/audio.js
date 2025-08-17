@@ -5,9 +5,15 @@ export class AudioEngine {
     constructor() {
         this.synth = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.2, release: 0.2 }})
             .toDestination();
+        // Polyphonic synth for sustained audible response notes
+        this.polySynth = new Tone.PolySynth(Tone.Synth, { 
+            oscillator: { type: "triangle" }, 
+            envelope: { attack: 0.005, decay: 0.1, sustain: 0.8, release: 0.3 }
+        }).toDestination();
         this.currentTonic = null;
         this.currentTarget = null;
         this.currentResolutionPlayed = false; // Track if resolution was played for replay
+        this.sustainedNotes = new Map(); // Track sustained notes for audible response
     }
     async resume() { await Tone.start(); }
     async playMidiNote(midiNumber, duration = 0.3, sendToMidi = true, volume = 0) {
@@ -70,6 +76,47 @@ export class AudioEngine {
                 // Only replay target note (no tonic)
                 await this.playMidiNote(this.currentTarget, 0.35, false);
             }
+        }
+    }
+
+    // Start a sustained note for audible response
+    startSustainedNote(midiNumber, volume = 0) {
+        // Stop any existing sustained note for this MIDI number
+        this.stopSustainedNote(midiNumber);
+
+        const freq = Tone.Frequency(midiNumber, "midi").toFrequency();
+
+        // Set volume (in dB, 0 is default, negative values are quieter)
+        const originalVolume = this.polySynth.volume.value;
+        this.polySynth.volume.value = volume;
+
+        // Trigger attack and store the note info
+        this.polySynth.triggerAttack(freq);
+        this.sustainedNotes.set(midiNumber, { originalVolume, startTime: Date.now() });
+    }
+
+    // Stop a sustained note for audible response
+    stopSustainedNote(midiNumber) {
+        const noteInfo = this.sustainedNotes.get(midiNumber);
+        if (noteInfo) {
+            const freq = Tone.Frequency(midiNumber, "midi").toFrequency();
+
+            // Trigger release for this specific note
+            this.polySynth.triggerRelease(freq);
+
+            // Restore original volume after a short delay
+            setTimeout(() => {
+                this.polySynth.volume.value = noteInfo.originalVolume;
+            }, 100);
+
+            this.sustainedNotes.delete(midiNumber);
+        }
+    }
+
+    // Stop all sustained notes
+    stopAllSustainedNotes() {
+        for (const midiNumber of this.sustainedNotes.keys()) {
+            this.stopSustainedNote(midiNumber);
         }
     }
 }

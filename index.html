@@ -60,35 +60,29 @@
                         </select>
                     </label>
                     <label>Play home note first
-                        <select id="tonic-mode">
-                            <option value="before-target" selected>Yes</option>
-                            <option value="off">No</option>
+                        <select id="home-note-frequency">
+                            <option value="always" selected>Always</option>
+                            <option value="every-2">Every other note</option>
+                            <option value="every-3">Every third note</option>
+                            <option value="every-4">Every fourth note</option>
+                            <option value="first-only">Only the first note</option>
+                            <option value="never">Never</option>
                         </select>
                     </label>
-                    <label>Resolution frequency
-                        <select id="resolution-frequency">
-                            <option value="1.0" selected>Always</option>
-                            <option value="0.5">Half the time</option>
-                            <option value="0.33">Third of the time</option>
-                            <option value="0.25">One in four times</option>
-                            <option value="0.0001">Only the first one</option>
-                        </select>
-                    </label>
-                    <label>Practice target
+                    <label>Notes to practice
                         <select id="practice-target">
-                            <option value="10" selected>10 rounds</option>
-                            <option value="20">20 rounds</option>
-                            <option value="30">30 rounds</option>
-                            <option value="50">50 rounds</option>
-                            <option value="100">100 rounds</option>
+                            <option value="10" selected>10 notes</option>
+                            <option value="20">20 notes</option>
+                            <option value="30">30 notes</option>
+                            <option value="50">50 notes</option>
+                            <option value="100">100 notes</option>
                         </select>
                     </label>
                 </div>
             </div>
         </div>
         <div class="game-controls">
-            <button id="start" class="primary">Start</button>
-            <button id="pause" class="secondary">Pause</button>
+            <button id="start-pause" class="primary">Start</button>
             <button id="replay" class="secondary">Replay</button>
         </div>
     </header>

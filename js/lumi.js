@@ -28,7 +28,11 @@ const COLORS = {
   red: [127, 0, 0],
   white: [127, 127, 127],
   darkred: [64, 0, 0],
-  off: [0, 0, 0]
+  off: [0, 0, 0],
+  brightblue: [0, 1, 255],
+  cyan: [0, 255, 255],
+  brightwhite: [255, 255, 255],
+  grey: [64, 64, 64]
 };
 
 // ---------------- helpers ----------------
@@ -222,10 +226,26 @@ export function setScaleColors(keySet, low, highExclusive) {
   try {
     for (let m = low; m < highExclusive; m++) {
       const inScale = keySet.includes(m % 12);
-      setKeyColor(m, inScale ? "white" : "darkred");
+      setKeyColor(m, inScale ? "brightblue" : "darkred");
     }
   } catch (e) {
     console.warn("Failed to set scale colors:", e);
+  }
+}
+
+/**
+ * Set grey colors for all keys in range (paused state)
+ * @param {number} low - Lowest MIDI note
+ * @param {number} highExclusive - Highest MIDI note + 1
+ */
+export function setPausedColors(low, highExclusive) {
+  if (!midiOut || !isLumi) return;
+  try {
+    for (let m = low; m < highExclusive; m++) {
+      setKeyColor(m, "grey");
+    }
+  } catch (e) {
+    console.warn("Failed to set paused colors:", e);
   }
 }
 
@@ -280,7 +300,7 @@ function sendPrimaryColor(r, g, b) {
  */
 export function sendPrimaryGreen() {
   sendPrimaryColor(0, 255, 0);
-  setTimeout(() => sendPrimaryColor(127, 127, 127), 350); // Return to white
+  // Don't reset primary color - let individual key colors handle restoration
 }
 
 /**
@@ -288,7 +308,7 @@ export function sendPrimaryGreen() {
  */
 export function sendPrimaryRed() {
   sendPrimaryColor(255, 0, 0);
-  setTimeout(() => sendPrimaryColor(127, 127, 127), 350); // Return to white
+  // Don't reset primary color - let individual key colors handle restoration
 }
 
 /**
@@ -369,6 +389,7 @@ export default {
   bindMidiOut,
   setKeyColor,
   setScaleColors,
+  setPausedColors,
   clearRange,
   clearAllKeys,
   sendPrimaryGreen,
