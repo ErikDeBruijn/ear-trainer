@@ -18,6 +18,7 @@ ui.setKeyboardRange(range[0], range[1]);
 setScaleColors(keySet, range[0], range[1]);
 let wrongMode = "silent";
 let tonicMode = "before-target";
+let resolutionFrequency = 1.0;
 
 function pick() { return randomNoteInKey(keySet, range); }
 
@@ -27,11 +28,12 @@ const game = new Game({
         ui.clearStatus();
         if (tonicMode === "before-target") {
             const tonic = keySet[0] + Math.floor(m / 12) * 12;
-            await audio.playTonicThenTarget(tonic, m);
+            await audio.playTonicThenTarget(tonic, m, 0.5, 0.3, 0.35, resolutionFrequency);
         } else {
             // Store current target for replay (no tonic in this mode)
             audio.currentTonic = null;
             audio.currentTarget = m;
+            audio.currentResolutionPlayed = false;
             // Play target note but don't send to MIDI out
             audio.playMidiNote(m, 0.35, false);
         }
@@ -83,6 +85,13 @@ async function boot() {
     if (tonicSel) {
       tonicSel.addEventListener("change", e => { tonicMode = e.target.value; });
       tonicMode = tonicSel.value || "before-target";
+    }
+
+    // Resolution frequency selector
+    const resolutionSel = document.getElementById("resolution-frequency");
+    if (resolutionSel) {
+      resolutionSel.addEventListener("change", e => { resolutionFrequency = parseFloat(e.target.value); });
+      resolutionFrequency = parseFloat(resolutionSel.value) || 1.0;
     }
 
     // Screen keyboard input

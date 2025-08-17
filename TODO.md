@@ -12,10 +12,10 @@
 ## 🧰 Fix/Polish
 - [x] Visuals: success/fail glow on keys (CSS) instead of status text
 - [x] Don't display the target note on the keyboard because it gives away the answer
-- [ ] Make the prompt (root key) a bit longer (e.g., 1.5s) to emphasize it's the target note
+- [x] Play "ta da" pattern where "da" is the home/root note to emphasize it
+- [x] Add option to control resolution frequency (always/half/third of the time) with replay always audible, ta-da at 20% less volume
 - [ ] Make average response times part of the score. Give feedback "FAST!" when the user was fast.
 - [ ] Press a key (note) to start with that note as the root note (keeping the range within C3-C4)
-- [ ] Allow the resolution (audible) to be heard before the target note
 - [ ] Clamp range to valid white-key `min` for keyboard widget
 - [ ] Debounce double answers on overlapping note-ons
 - [ ] Relegate MIDI in/out to settings modal (to be displayed when no MIDI devices is chosen/remembered or the connection not present)

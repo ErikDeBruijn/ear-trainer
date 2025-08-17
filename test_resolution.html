@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resolution Frequency Test</title>
+    <script src="https://unpkg.com/tone@latest/build/Tone.js"></script>
+</head>
+<body>
+    <h1>Resolution Frequency Test</h1>
+    <button id="test-always">Test Always (1.0)</button>
+    <button id="test-half">Test Half (0.5)</button>
+    <button id="test-third">Test Third (0.33)</button>
+    <button id="test-replay">Test Replay</button>
+    <div id="results"></div>
+
+    <script type="module">
+        import { AudioEngine } from './js/audio.js';
+        
+        const audio = new AudioEngine();
+        await Tone.start();
+        
+        const results = document.getElementById('results');
+        
+        // Test function
+        async function testResolution(frequency, label) {
+            results.innerHTML += `<p>Testing ${label}...</p>`;
+            const tonic = 60; // C4
+            const target = 64; // E4
+            
+            // Test multiple times to see probability
+            let resolutionCount = 0;
+            const testCount = 10;
+            
+            for (let i = 0; i < testCount; i++) {
+                await audio.playTonicThenTarget(tonic, target, 0.5, 0.1, 0.35, frequency);
+                if (audio.currentResolutionPlayed) {
+                    resolutionCount++;
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            results.innerHTML += `<p>${label}: Resolution played ${resolutionCount}/${testCount} times (${(resolutionCount/testCount*100).toFixed(1)}%)</p>`;
+        }
+        
+        document.getElementById('test-always').addEventListener('click', () => testResolution(1.0, 'Always'));
+        document.getElementById('test-half').addEventListener('click', () => testResolution(0.5, 'Half'));
+        document.getElementById('test-third').addEventListener('click', () => testResolution(0.33, 'Third'));
+        document.getElementById('test-replay').addEventListener('click', async () => {
+            results.innerHTML += `<p>Testing replay (should always have resolution)...</p>`;
+            await audio.playTonicThenTarget(60, 64, 0.5, 0.1, 0.35, 0.33); // Low probability initially
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await audio.replayCurrentNotes(); // Should always play resolution
+            results.innerHTML += `<p>Replay test completed</p>`;
+        });
+    </script>
+</body>
+</html>
