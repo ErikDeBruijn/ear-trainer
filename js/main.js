@@ -5,7 +5,7 @@ import { parseKey, rangeToMidi, randomNoteInKey } from "./theory.js";
 import { UI } from "./ui.js";
 import { Game } from "./game.js";
 import { store } from "./storage.js";
-import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange, sendPrimaryGreen, sendPrimaryRed, setRootKey, setMaxBrightness } from "./lights.js";
+import { bindMidiOut, setKeyColor, clearAllKeys, setScaleColors, clearRange, sendPrimaryGreen, sendPrimaryRed, setRootKey, setMaxBrightness } from "./lumi.js";
 
 const RESULT_HOLD_MS = 1000; // keep feedback visible before next prompt
 

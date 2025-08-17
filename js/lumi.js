@@ -7,6 +7,9 @@
  *
  * No runtime globals; pass a Web MIDI Output (MIDIOutput) into the Lumi instance
  * or use the pure builder functions with your own sender.
+ * 
+ * This module combines both low-level SysEx functionality and high-level lighting controls
+ * for LUMI devices.
  */
 
 /** @typedef {import('./types').MIDIOutputLike} MIDIOutputLike */
@@ -14,6 +17,19 @@
 const MFR = [0xF0, 0x00, 0x21, 0x10]; // ROLI manufacturer id
 const START = 0xF0;
 const END = 0xF7;
+
+// State for the lighting functionality
+let midiOut = null;
+let isLumi = false;
+
+// Map of simple colors → RGB values (used in SysEx stub for LUMI)
+const COLORS = {
+  green: [0, 127, 0],
+  red: [127, 0, 0],
+  white: [127, 127, 127],
+  darkred: [64, 0, 0],
+  off: [0, 0, 0]
+};
 
 // ---------------- helpers ----------------
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v | 0));
@@ -77,6 +93,27 @@ export const ROOT_MAP = {
   // Extend mapping when we learn more
 };
 
+// Root key commands mapping - all 12 chromatic keys
+export const ROOT_KEY_COMMANDS = {
+  'C': [0x10, 0x30, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00],   // C (confirmed)
+  'C#': [0x10, 0x30, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00],  // C#/Db
+  'Db': [0x10, 0x30, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00],  // Db (same as C#)
+  'D': [0x10, 0x30, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00],   // D
+  'D#': [0x10, 0x30, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00],  // D#/Eb
+  'Eb': [0x10, 0x30, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00],  // Eb (same as D#)
+  'E': [0x10, 0x30, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00],   // E
+  'F': [0x10, 0x30, 0x53, 0x00, 0x00, 0x00, 0x00, 0x00],   // F
+  'F#': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],  // F# (confirmed)
+  'Gb': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],  // Gb (same as F#)
+  'G': [0x10, 0x30, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00],   // G
+  'G#': [0x10, 0x30, 0x13, 0x01, 0x00, 0x00, 0x00, 0x00],  // G#/Ab
+  'Ab': [0x10, 0x30, 0x13, 0x01, 0x00, 0x00, 0x00, 0x00],  // Ab (same as G#)
+  'A': [0x10, 0x30, 0x23, 0x01, 0x00, 0x00, 0x00, 0x00],   // A
+  'A#': [0x10, 0x30, 0x33, 0x01, 0x00, 0x00, 0x00, 0x00],  // A#/Bb
+  'Bb': [0x10, 0x30, 0x33, 0x01, 0x00, 0x00, 0x00, 0x00],  // Bb (same as A#)
+  'B': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00]    // B
+};
+
 export const BRIGHTNESS_MAP = {
   '0':   [0x10, 0x40, 0x04, 0x00, 0, 0, 0, 0], // 0%
   '25':  [0x10, 0x40, 0x24, 0x06, 0, 0, 0, 0], // 25%
@@ -136,6 +173,170 @@ export class Lumi {
   sendBrightness(level)     { return this.send(buildBrightness(level, this.deviceId)); }
 }
 
+// ------------- Lighting Functions -------------
+
+/**
+ * Bind a MIDI output for lighting control
+ * @param {MIDIOutputLike} out - MIDI output to use
+ */
+export function bindMidiOut(out) {
+  midiOut = out;
+  isLumi = !!out && /lumi/i.test(out.name);
+}
+
+/**
+ * Set the color of a specific key
+ * @param {number} note - MIDI note number
+ * @param {string} color - Color name from COLORS map
+ */
+export function setKeyColor(note, color) {
+  if (!midiOut || !isLumi) return;
+  const rgb = COLORS[color] || COLORS.off;
+  // Construct SysEx: [F0, <ROLI ID>, <command>, note, r, g, b, F7]
+  // Actual spec TBD — this is a scaffold only.
+  const sysex = [
+    0xF0,
+    0x00, 0x21, 0x10, // ROLI manufacturer ID
+    0x78,             // hypothetical command for key light
+    note & 0x7F,
+    rgb[0] & 0x7F,
+    rgb[1] & 0x7F,
+    rgb[2] & 0x7F,
+    0xF7
+  ];
+  try {
+    midiOut.send(sysex);
+  } catch (e) {
+    console.warn("Failed to send SysEx key color:", e);
+  }
+}
+
+/**
+ * Set colors for keys in a scale
+ * @param {number[]} keySet - Array of scale degrees (0-11)
+ * @param {number} low - Lowest MIDI note
+ * @param {number} highExclusive - Highest MIDI note + 1
+ */
+export function setScaleColors(keySet, low, highExclusive) {
+  if (!midiOut || !isLumi) return;
+  try {
+    for (let m = low; m < highExclusive; m++) {
+      const inScale = keySet.includes(m % 12);
+      setKeyColor(m, inScale ? "white" : "darkred");
+    }
+  } catch (e) {
+    console.warn("Failed to set scale colors:", e);
+  }
+}
+
+/**
+ * Clear all keys in a range
+ * @param {number} low - Lowest MIDI note
+ * @param {number} highExclusive - Highest MIDI note + 1
+ */
+export function clearRange(low, highExclusive) {
+  if (!midiOut) return;
+  try {
+    for (let m = low; m < highExclusive; m++) {
+      setKeyColor(m, "off");
+    }
+  } catch (e) {
+    console.warn("Failed to clear range:", e);
+  }
+}
+
+/**
+ * Clear all keys (send note-off to all 128 MIDI notes)
+ */
+export function clearAllKeys() {
+  if (!midiOut) return;
+  try {
+    for (let n = 0; n < 128; n++) {
+      midiOut.send([0x80, n, 0]);
+    }
+  } catch (e) {
+    console.warn("Failed to clear keys:", e);
+  }
+}
+
+/**
+ * Send a primary color to the device
+ * @param {number} r - Red component (0-255)
+ * @param {number} g - Green component (0-255)
+ * @param {number} b - Blue component (0-255)
+ */
+function sendPrimaryColor(r, g, b) {
+  if (!midiOut || !isLumi) return;
+  try {
+    const frame = buildPrimaryRGB(r, g, b);
+    midiOut.send(frame);
+  } catch (e) {
+    console.warn("Failed to send primary color:", e);
+  }
+}
+
+/**
+ * Send primary green color (success indicator)
+ */
+export function sendPrimaryGreen() {
+  sendPrimaryColor(0, 255, 0);
+  setTimeout(() => sendPrimaryColor(127, 127, 127), 350); // Return to white
+}
+
+/**
+ * Send primary red color (error indicator)
+ */
+export function sendPrimaryRed() {
+  sendPrimaryColor(255, 0, 0);
+  setTimeout(() => sendPrimaryColor(127, 127, 127), 350); // Return to white
+}
+
+/**
+ * Set the root key based on a key signature
+ * @param {string} keySignature - Key signature (e.g., "C-major", "A-minor")
+ */
+export function setRootKey(keySignature) {
+  if (!midiOut || !isLumi) return;
+
+  // Extract root note from key signature like "C-major" or "A-minor"
+  const rootNote = keySignature.split('-')[0];
+  const command = ROOT_KEY_COMMANDS[rootNote];
+
+  if (!command) {
+    console.warn(`Unknown root key: ${rootNote}`);
+    return;
+  }
+
+  try {
+    const frame = buildFrameFromCmd8(command);
+    midiOut.send(frame);
+  } catch (e) {
+    console.warn("Failed to set root key:", e);
+  }
+}
+
+/**
+ * Set the brightness level
+ * @param {string} level - Brightness level ("0", "25", "50", "75", "100")
+ */
+export function setBrightness(level) {
+  if (!midiOut || !isLumi) return;
+
+  try {
+    const frame = buildBrightness(level);
+    midiOut.send(frame);
+  } catch (e) {
+    console.warn("Failed to set brightness:", e);
+  }
+}
+
+/**
+ * Set maximum brightness
+ */
+export function setMaxBrightness() {
+  setBrightness('100');
+}
+
 // ------------- Utilities -------------
 /**
  * Parse a payload hex string (space/comma separated) to 7-bit bytes (no F0/F7, no checksum),
@@ -160,7 +361,19 @@ export default {
   encodeColorRGB,
   cmdMode, cmdScale, cmdRootKey, cmdPrimaryRGB, cmdRootRGB, cmdBrightness,
   buildMode, buildScale, buildRootKey, buildPrimaryRGB, buildRootRGB, buildBrightness,
-  MODE_MAP, SCALE_MAP, ROOT_MAP, BRIGHTNESS_MAP,
+  MODE_MAP, SCALE_MAP, ROOT_MAP, BRIGHTNESS_MAP, ROOT_KEY_COMMANDS, COLORS,
   Lumi,
   wrapPayloadHexToFrame,
+
+  // Lighting functions
+  bindMidiOut,
+  setKeyColor,
+  setScaleColors,
+  clearRange,
+  clearAllKeys,
+  sendPrimaryGreen,
+  sendPrimaryRed,
+  setRootKey,
+  setBrightness,
+  setMaxBrightness,
 };
