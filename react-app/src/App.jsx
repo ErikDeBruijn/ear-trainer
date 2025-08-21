@@ -473,7 +473,8 @@ function App() {
         practiceTime: prev.gameData.practiceTime, // Keep existing time
         accuracy: accuracy > 0 ? `${accuracy}%` : '—',
         progress: gameData.progress,
-        progressText: `${gameData.noteCount}/${gameData.practiceTarget}`
+        progressText: `${gameData.noteCount}/${gameData.practiceTarget}`,
+        noteResults: gameData.noteResults
       }
     }));
   };
@@ -680,6 +681,7 @@ function App() {
           progressText={appState.gameData.progressText}
           noteResults={appState.gameData.noteResults}
           practiceTarget={appState.settings.practiceTarget}
+          currentNoteNumber={appState.gameData.noteCount}
         />
         
         <Status message={appState.status} />

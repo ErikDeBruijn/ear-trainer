@@ -1,4 +1,4 @@
-function ProgressBar({ progress, progressText, noteResults, practiceTarget }) {
+function ProgressBar({ progress, progressText, noteResults, practiceTarget, currentNoteNumber }) {
     const totalNotes = parseInt(practiceTarget, 10) || 10;
     
     const renderSegmentedProgress = () => {
@@ -6,10 +6,14 @@ function ProgressBar({ progress, progressText, noteResults, practiceTarget }) {
         
         for (let i = 1; i <= totalNotes; i++) {
             const noteResult = noteResults?.find(result => result.noteNumber === i);
-            let segmentClass = 'progress-segment pending';
+            let segmentClass = 'progress-segment';
             
             if (noteResult) {
-                segmentClass = `progress-segment ${noteResult.isCorrect ? 'correct' : 'incorrect'}`;
+                segmentClass += ` ${noteResult.isCorrect ? 'correct' : 'incorrect'}`;
+            } else if (i === currentNoteNumber) {
+                segmentClass += ' current';
+            } else {
+                segmentClass += ' pending';
             }
             
             segments.push(
