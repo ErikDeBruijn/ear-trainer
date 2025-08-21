@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { rangeToMidi } from '../services/theoryService.js';
 
-function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnswer, homeNote }) {
+function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnswer, homeNote, trainingMode, availableNotes }) {
     // Piano keys with their MIDI note numbers and labels
     const keys = [
         { note: 48, label: 'C3', sharp: false },
@@ -50,16 +50,29 @@ function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnsw
             }
         }
         
-        // Only highlight keys that are both in the scale AND in the selected range
-        if (scaleNotes.has(key.note % 12)) {
-            const [low, high] = rangeToMidi(noteRange);
-            if (key.note >= low && key.note <= high) {
+        // In training mode, only highlight notes that are actually available for the current level
+        // In advanced mode, highlight all scale notes within range
+        if (trainingMode && availableNotes) {
+            // Training mode: only highlight specific available notes
+            if (availableNotes.has(key.note)) {
                 classes.push('in-scale');
                 
                 // Check if this is the home note (root of the key)
-                // Highlight ALL instances of the home note in the range
                 if (homeNote !== undefined && (key.note % 12) === homeNote) {
                     classes.push('home-note');
+                }
+            }
+        } else {
+            // Advanced mode: highlight all scale notes within range
+            if (scaleNotes.has(key.note % 12)) {
+                const [low, high] = rangeToMidi(noteRange);
+                if (key.note >= low && key.note <= high) {
+                    classes.push('in-scale');
+                    
+                    // Check if this is the home note (root of the key)
+                    if (homeNote !== undefined && (key.note % 12) === homeNote) {
+                        classes.push('home-note');
+                    }
                 }
             }
         }

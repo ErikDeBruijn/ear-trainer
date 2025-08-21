@@ -154,6 +154,78 @@ button.secondary { cursor:pointer; }
   #overlay-flash { transition: none; }
 }
 
+/* --- Level Unlock Notification --- */
+.level-unlock-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.level-unlock-notification {
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.4s ease-out;
+}
+
+.unlock-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.unlock-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.unlock-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.unlock-description {
+  color: var(--muted);
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.unlock-dismiss {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.unlock-dismiss:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* --- Progress Bar --- */
 .progress-container { margin-top: 16px; }
 .progress-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
@@ -170,8 +242,33 @@ button.secondary { cursor:pointer; }
   width: 0%; 
   background: linear-gradient(90deg, var(--accent), #4fd1c7);
   border-radius: 3px;
-  transition: width 0.3s ease-out;
-  position: relative;
+}
+
+/* Segmented progress bar */
+.progress-bar.segmented {
+  display: flex;
+  gap: 1px;
+  height: 10px;
+}
+
+.progress-segment {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  transition: background-color 0.3s ease;
+}
+
+.progress-segment.pending {
+  background: #2d3748;
+  border: 1px solid #4a5568;
+}
+
+.progress-segment.correct {
+  background: #10b981; /* Green */
+}
+
+.progress-segment.incorrect {
+  background: #ef4444; /* Red */
 }
 .progress-fill::after {
   content: '';

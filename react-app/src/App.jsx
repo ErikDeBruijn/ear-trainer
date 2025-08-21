@@ -59,6 +59,7 @@ function App() {
     status: '',
     activeNotes: new Set(),
     scaleNotes: new Set(),
+    availableNotes: new Set(), // For training mode - actual MIDI notes available
     currentIncorrectNote: null,
     homeNote: 0 // Default to C
   });
@@ -425,13 +426,24 @@ function App() {
     const homeNote = keySet[0]; // First note in the key set is the root/home note
     
     let notesToHighlight;
+    let availableNotesSet = new Set();
+    
     if (appState.settings.trainingMode) {
       // In training mode, only highlight current level notes
-      const rootKeyMidi = keySet[0];
-      const availableNotes = levelService.getAvailableNotes(appState.settings.currentLevel, rootKeyMidi);
-      // Convert to note classes (0-11) for highlighting
-      const noteClasses = availableNotes.map(note => note % 12);
+      const [low, high] = rangeToMidi(appState.settings.range);
+      // Use the root note from the range (e.g., C3 = 48 for C3-B4 range)
+      const rootKeyMidi = low;
+      const availableMidiNotes = levelService.getAvailableNotes(appState.settings.currentLevel, rootKeyMidi);
+      
+      // Filter available notes to only those in the current range
+      const notesInRange = availableMidiNotes.filter(note => note >= low && note <= high);
+      availableNotesSet = new Set(notesInRange);
+      
+      // For scaleNotes, use the note classes of the notes that are actually in range
+      const noteClasses = notesInRange.map(note => note % 12);
       notesToHighlight = new Set(noteClasses);
+      
+      console.log(`Training mode: level ${appState.settings.currentLevel}, root MIDI:`, rootKeyMidi, 'available MIDI notes:', availableMidiNotes, 'in range:', notesInRange);
     } else {
       // Advanced mode - highlight full key set  
       notesToHighlight = new Set(keySet);
@@ -440,6 +452,7 @@ function App() {
     setAppState(prev => ({
       ...prev,
       scaleNotes: notesToHighlight,
+      availableNotes: availableNotesSet,
       homeNote: homeNote
     }));
     
@@ -488,7 +501,9 @@ function App() {
     analyticsService.startSession(appState.settings);
     
     gameService.start();
-    updateGameData();
+    // Set the practice target after starting (since start() calls reset())
+    gameService.setPracticeTarget(appState.settings.practiceTarget);
+    updateGameData(); // Update UI with correct practice target
     
     // Update LUMI scale highlighting for the current game
     updateScaleHighlighting(`${appState.settings.rootKey}-${appState.settings.scale}`);
@@ -649,6 +664,8 @@ function App() {
           onKeyPress={handlePianoKeyPress}
           isIncorrectAnswer={isIncorrectAnswer}
           homeNote={appState.homeNote}
+          trainingMode={appState.settings.trainingMode}
+          availableNotes={appState.availableNotes}
         />
         
         <HUD 
@@ -661,6 +678,8 @@ function App() {
         <ProgressBar 
           progress={appState.gameData.progress}
           progressText={appState.gameData.progressText}
+          noteResults={appState.gameData.noteResults}
+          practiceTarget={appState.settings.practiceTarget}
         />
         
         <Status message={appState.status} />

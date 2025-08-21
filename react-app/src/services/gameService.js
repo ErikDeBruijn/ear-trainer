@@ -40,6 +40,7 @@ export class GameService {
         this.targetStartTime = null;
         this.practiceTarget = 10; // Default target
         this.currentTargetHadError = false; // Track if current target already had an incorrect attempt
+        this.noteResults = []; // Track individual note results: {noteNumber, isCorrect}
     }
     
     setPracticeTarget(target) {
@@ -123,12 +124,18 @@ export class GameService {
             // Base score + time bonus (faster = higher bonus)
             const timeBonus = Math.max(0, Math.floor((2000 - responseTime) / 100));
             this.score += 10 + timeBonus;
-            this.streak++; 
+            this.streak++;
+            
+            // Track this note as completed correctly
+            this.noteResults.push({ noteNumber: this.noteCount, isCorrect: true });
         } else { 
             // Only count as an attempt if this target hasn't had an error yet
             if (!this.currentTargetHadError) {
                 this.attempts++;
                 this.currentTargetHadError = true;
+                
+                // Track this note as completed incorrectly (first wrong attempt)
+                this.noteResults.push({ noteNumber: this.noteCount, isCorrect: false });
             }
             this.score = Math.max(0, this.score - 5); 
             this.streak = 0; 
@@ -148,7 +155,8 @@ export class GameService {
             noteCount: this.noteCount,
             practiceTarget: this.practiceTarget,
             target: this.target,
-            progress: this.practiceTarget > 0 ? (this.noteCount / this.practiceTarget) * 100 : 0
+            progress: this.practiceTarget > 0 ? (this.noteCount / this.practiceTarget) * 100 : 0,
+            noteResults: this.noteResults
         };
     }
 }
