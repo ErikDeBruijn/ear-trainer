@@ -237,3 +237,205 @@ button.secondary { cursor:pointer; }
   background: #555 !important;
   transform: translateY(2px);
 }
+
+/* MIDI Input Selector */
+.midi-input-selector {
+  position: relative;
+  width: 100%;
+}
+
+.midi-input-header {
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+  min-height: 40px;
+}
+
+.midi-input-header:hover {
+  background: #151a24;
+}
+
+.midi-input-summary {
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+}
+
+.dropdown-arrow {
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.midi-input-header.expanded .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.midi-input-dropdown {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.midi-input-dropdown.show {
+  display: block;
+}
+
+.midi-input-list {
+  padding: 8px 0;
+}
+
+.midi-input-item {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.midi-input-item:hover {
+  background: #151a24;
+}
+
+.midi-input-item input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--accent);
+}
+
+.midi-input-item label {
+  margin: 0;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bluetooth-icon {
+  width: 14px;
+  height: 14px;
+  fill: var(--accent);
+  flex-shrink: 0;
+}
+
+.device-type-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.device-type-icon.melodic {
+  fill: var(--good);
+}
+
+.device-type-icon.drum {
+  fill: #ff9500;
+}
+
+.device-type-icon.controller {
+  fill: var(--muted);
+}
+
+.midi-input-item.non-melodic {
+  opacity: 0.6;
+}
+
+.midi-input-item.non-melodic:hover {
+  opacity: 0.8;
+}
+
+/* MIDI Output Selector (reusing input selector styles) */
+.midi-output-selector {
+  position: relative;
+  width: 100%;
+}
+
+.midi-output-header {
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+  min-height: 40px;
+}
+
+.midi-output-header:hover {
+  background: #151a24;
+}
+
+.midi-output-summary {
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+}
+
+.midi-output-header.expanded .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.midi-output-dropdown {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.midi-output-dropdown.show {
+  display: block;
+}
+
+.midi-output-list {
+  padding: 8px 0;
+}
+
+.midi-output-item {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.midi-output-item:hover {
+  background: #151a24;
+}
+
+.midi-output-item input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--accent);
+}
+
+.midi-output-item label {
+  margin: 0;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
