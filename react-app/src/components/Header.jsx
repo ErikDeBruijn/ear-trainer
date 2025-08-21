@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { TRAINING_LEVELS } from '../services/levelService.js';
 
 function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDeviceChange, onStartPause, onReplay }) {
     const [settingsVisible, setSettingsVisible] = useState(false);
@@ -22,7 +23,37 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
     };
 
     const handleInputChange = (key, value) => {
-        onSettingsChange({ [key]: value });
+        // Check if changing key/scale while in training mode
+        if ((key === 'rootKey' || key === 'scale') && settings.trainingMode) {
+            if (confirm('Changing the key or scale will exit Training Mode and enter Advanced Mode. Continue?')) {
+                onSettingsChange({ [key]: value, trainingMode: false });
+            }
+        } else {
+            onSettingsChange({ [key]: value });
+        }
+    };
+
+    const handleTrainingModeChange = (isTrainingMode) => {
+        if (isTrainingMode) {
+            // Entering training mode - reset to level 1, C major
+            onSettingsChange({ 
+                trainingMode: true, 
+                currentLevel: 1,
+                rootKey: 'C',
+                scale: 'major'
+            });
+        } else {
+            // Exiting training mode
+            onSettingsChange({ trainingMode: false });
+        }
+    };
+
+    const getLevelName = (level) => {
+        return TRAINING_LEVELS[level]?.name || 'Unknown';
+    };
+
+    const getLevelDescription = (level) => {
+        return TRAINING_LEVELS[level]?.description || '';
     };
 
     const handleMidiInputChange = (deviceId, checked) => {
@@ -69,6 +100,30 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
                 {settingsVisible && (
                     <div className={`settings-panel ${settingsVisible ? 'expanded' : ''}`}>
                         <div className="controls">
+                            {/* Training Mode Section */}
+                            <div className="training-mode-section">
+                                <label className="mode-toggle">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={settings.trainingMode}
+                                        onChange={(e) => handleTrainingModeChange(e.target.checked)}
+                                    />
+                                    <span className="mode-label">
+                                        {settings.trainingMode ? '🎓 Training Mode' : '🔧 Advanced Mode'}
+                                    </span>
+                                </label>
+                                
+                                {settings.trainingMode && (
+                                    <div className="level-info">
+                                        <div className="current-level">
+                                            Level {settings.currentLevel}: {getLevelName(settings.currentLevel)}
+                                        </div>
+                                        <div className="level-description">
+                                            {getLevelDescription(settings.currentLevel)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <label>
                                 Root Key
                                 <select 

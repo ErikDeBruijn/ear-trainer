@@ -5,6 +5,7 @@ import { gameService } from './services/gameService.js';
 import { storageService } from './services/storageService.js';
 import { lumiService } from './services/lumiService.js';
 import { analyticsService } from './services/analyticsService.js';
+import { levelService, TRAINING_LEVELS } from './services/levelService.js';
 import { parseKey, rangeToMidi, randomNoteInKey, midiNoteToKeySignature } from './services/theoryService.js';
 import confetti from 'canvas-confetti';
 
@@ -36,7 +37,9 @@ function App() {
       homeNoteFrequency: 'always',
       practiceTarget: '10',
       volume: 70,
-      settingsVisible: false
+      settingsVisible: false,
+      trainingMode: true,
+      currentLevel: levelService.getCurrentLevel()
     },
     midiDevices: {
       inputs: [],
@@ -389,9 +392,21 @@ function App() {
   const updateScaleHighlighting = (key = `${appState.settings.rootKey}-${appState.settings.scale}`) => {
     const keySet = parseKey(key);
     const homeNote = keySet[0]; // First note in the key set is the root/home note
+    
+    let notesToHighlight;
+    if (appState.settings.trainingMode) {
+      // In training mode, only highlight current level notes
+      const rootKeyMidi = keySet[0];
+      const availableNotes = levelService.getAvailableNotes(appState.settings.currentLevel, rootKeyMidi);
+      notesToHighlight = new Set(availableNotes);
+    } else {
+      // Advanced mode - highlight full key set
+      notesToHighlight = new Set(keySet);
+    }
+    
     setAppState(prev => ({
       ...prev,
-      scaleNotes: new Set(keySet),
+      scaleNotes: notesToHighlight,
       homeNote: homeNote
     }));
     
