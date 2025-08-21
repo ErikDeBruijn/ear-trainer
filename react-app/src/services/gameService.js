@@ -61,8 +61,12 @@ export class GameService {
     }
     
     tick() {
-        this.sessionTime += 1; 
-        storageService.addDailyPracticeTime(1);
+        // Only count practice time when actively playing (not ended or idle)
+        if (this.state === "prompt" || this.state === "await") {
+            this.sessionTime += 1; 
+            storageService.addDailyPracticeTime(1);
+        }
+        
         const totalTime = storageService.getDailyPracticeTime();
         const minutes = Math.floor(totalTime / 60);
         const seconds = totalTime % 60;
