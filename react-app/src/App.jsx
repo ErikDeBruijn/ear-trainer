@@ -25,7 +25,7 @@ function App() {
     gameState: 'idle',
     settings: {
       key: 'C-major',
-      range: 'C3-C5',
+      range: 'C3-B4',
       homeNoteFrequency: 'always',
       practiceTarget: '10',
       volume: 70,
@@ -74,7 +74,7 @@ function App() {
       // Setup game callbacks with initial settings
       const initialSettings = { 
         key: 'C-major', 
-        range: 'C3-C5', 
+        range: 'C3-B4', 
         homeNoteFrequency: 'always', 
         practiceTarget: '10', 
         volume: 70,
@@ -430,6 +430,7 @@ function App() {
         <Piano 
           activeNotes={appState.activeNotes}
           scaleNotes={appState.scaleNotes}
+          noteRange={appState.settings.range}
           onKeyPress={handlePianoKeyPress}
         />
         

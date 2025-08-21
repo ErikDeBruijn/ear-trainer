@@ -98,7 +98,7 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
                                     </optgroup>
                                     <optgroup label="Two octaves">
                                         <option value="C2-C4">C2–C4 (2 octaves)</option>
-                                        <option value="C3-C5">C3–C5 (2 octaves)</option>
+                                        <option value="C3-B4">C3–B4 (2 octaves)</option>
                                         <option value="C4-C6">C4–C6 (2 octaves)</option>
                                     </optgroup>
                                 </select>

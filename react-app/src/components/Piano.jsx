@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
+import { rangeToMidi } from '../services/theoryService.js';
 
-function Piano({ activeNotes, scaleNotes, onKeyPress }) {
+function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress }) {
     // Piano keys with their MIDI note numbers and labels
     const keys = [
         { note: 48, label: 'C3', sharp: false },
@@ -44,8 +45,12 @@ function Piano({ activeNotes, scaleNotes, onKeyPress }) {
             classes.push('active');
         }
         
+        // Only highlight keys that are both in the scale AND in the selected range
         if (scaleNotes.has(key.note % 12)) {
-            classes.push('in-scale');
+            const [low, high] = rangeToMidi(noteRange);
+            if (key.note >= low && key.note <= high) {
+                classes.push('in-scale');
+            }
         }
         
         // Don't show target note - this is ear training, not visual training!
