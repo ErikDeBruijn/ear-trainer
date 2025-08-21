@@ -48,11 +48,31 @@
                           </optgroup>
                         </select>
                     </label>
-                    <label>MIDI In
-                        <select id="midi-in"></select>
+                    <label>MIDI Inputs
+                        <div class="midi-input-selector">
+                            <div class="midi-input-header" id="midi-input-header">
+                                <span id="midi-input-summary">No devices selected</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div class="midi-input-dropdown" id="midi-input-dropdown">
+                                <div class="midi-input-list" id="midi-input-list">
+                                    <!-- Checkboxes will be populated here -->
+                                </div>
+                            </div>
+                        </div>
                     </label>
-                    <label>MIDI Out
-                        <select id="midi-out"></select>
+                    <label>MIDI Outputs
+                        <div class="midi-output-selector">
+                            <div class="midi-output-header" id="midi-output-header">
+                                <span id="midi-output-summary">No devices selected</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div class="midi-output-dropdown" id="midi-output-dropdown">
+                                <div class="midi-output-list" id="midi-output-list">
+                                    <!-- Checkboxes will be populated here -->
+                                </div>
+                            </div>
+                        </div>
                     </label>
                     <label>Audible response
                         <select id="audible-response">
