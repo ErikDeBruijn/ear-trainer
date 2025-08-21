@@ -1,0 +1,446 @@
+:root { --bg:#0b0c10; --panel:#111318; --text:#e7e9ee; --muted:#9aa1ac; --accent:#5eead4; --bad:#ef4444; --good:#22c55e; }
+* { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Inter, Roboto, Arial; }
+body { margin:0; background:linear-gradient(180deg,#0b0c10,#0e1016); color:var(--text); }
+.container { max-width:1100px; margin:auto; padding:20px; }
+header { display:grid; grid-template-columns: 1fr; gap:12px; }
+.title { font-weight:700; }
+
+/* Settings Section */
+.settings-section { margin-bottom: 12px; }
+.settings-toggle { 
+  width: 100%; 
+  padding: 12px 16px; 
+  background: var(--panel); 
+  border: 1px solid #1e2633; 
+  border-radius: 12px; 
+  color: var(--text); 
+  cursor: pointer; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+.settings-toggle:hover { background: #151a24; }
+.settings-toggle-icon { 
+  transition: transform 0.2s ease; 
+  font-size: 14px;
+}
+.settings-toggle.collapsed .settings-toggle-icon { transform: rotate(-90deg); }
+.settings-panel { 
+  overflow: hidden; 
+  transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+  max-height: 0;
+  opacity: 0;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 0 0 12px 12px;
+  border-top: none;
+  margin-top: -1px;
+}
+.settings-panel.expanded { 
+  max-height: 500px; 
+  opacity: 1;
+}
+.controls { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+  gap: 12px; 
+  align-items: end; 
+  padding: 16px;
+}
+
+/* Game Controls */
+.game-controls { 
+  display: flex; 
+  gap: 12px; 
+  justify-content: center;
+}
+label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+select, button { padding:10px; border-radius:10px; border:1px solid #263243; background:#0f1320; color:var(--text); }
+input[type="range"] { 
+  padding: 10px 0; 
+  background: transparent; 
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-track {
+  background: #263243;
+  height: 4px;
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  background: var(--accent);
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-track {
+  background: #263243;
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+}
+input[type="range"]::-moz-range-thumb {
+  background: var(--accent);
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+button.primary { background:var(--accent); color:#092823; border:none; font-weight:700; cursor:pointer; }
+button.secondary { cursor:pointer; }
+.panel { margin-top:14px; background:var(--panel); border:1px solid #1e2633; border-radius:16px; padding:16px; }
+
+.hud { display:flex; gap:20px; margin-top:12px; font-variant-numeric: tabular-nums; }
+.status { margin-top:10px; color:var(--muted); min-height:1.2em; }
+.success { color: var(--good); }
+.error { color: var(--bad); }
+/* --- Feedback pill --- */
+.status { margin-top:10px; min-height:1.6em; }
+.status.status-pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; font-weight:700; border:1px solid transparent; }
+.status.status-pill.ok { background: rgba(34,197,94,.15); border-color: var(--good); color: var(--text); }
+.status.status-pill.bad { background: rgba(239,68,68,.12); border-color: var(--bad); color: var(--text); }
+@media (prefers-reduced-motion: no-preference) {
+    .status.status-pill { animation: pop-in .18s ease-out; }
+    @keyframes pop-in { from { transform: scale(.96); opacity:.0 } to { transform: scale(1); opacity:1 } }
+}
+
+/* --- Screen flash overlay --- */
+#overlay-flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: transparent; transition: opacity 120ms ease-out, background-color 120ms ease-out; }
+#overlay-flash.flash-ok { background: #ffffff; opacity: 0.9; }
+#overlay-flash.flash-bad { background: #ff2a2a; opacity: 0.35; }
+@media (prefers-reduced-motion: reduce) {
+  #overlay-flash { transition: none; }
+}
+
+/* --- Progress Bar --- */
+.progress-container { margin-top: 16px; }
+.progress-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+.progress-bar { 
+  width: 100%; 
+  height: 8px; 
+  background: #1e2633; 
+  border-radius: 4px; 
+  overflow: hidden;
+  border: 1px solid #263243;
+}
+.progress-fill { 
+  height: 100%; 
+  width: 0%; 
+  background: linear-gradient(90deg, var(--accent), #4fd1c7);
+  border-radius: 3px;
+  transition: width 0.3s ease-out;
+  position: relative;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill { transition: none; }
+  .progress-fill::after { animation: none; }
+}
+
+/* --- Piano Integration --- */
+.piano-container { 
+  margin: 12px 0; 
+  display: flex; 
+  justify-content: center;
+}
+
+/* Completely override piano.css with scoped styles for our dark theme */
+#piano-keys { 
+  height: 120px;
+  display: flex;
+  justify-content: center;
+  background: var(--panel);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #1e2633;
+  position: relative;
+}
+
+#piano-keys .key { 
+  background: var(--text);
+  border-radius: 8px;
+  font-size: 10px;
+  color: #333;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  width: 36px;
+  height: 96px;
+  margin: 0 1px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  z-index: 3;
+  position: relative;
+}
+
+#piano-keys .key:hover {
+  background: #f0f0f0;
+}
+
+#piano-keys .key.sharp { 
+  background: #333;
+  color: var(--text);
+  width: 20px;
+  height: 60px;
+  z-index: 10;
+  position: absolute;
+  top: 12px;
+  pointer-events: auto;
+}
+
+#piano-keys .key.sharp:hover {
+  background: #444;
+}
+
+/* Sharp key positioning - centered between white keys with 39px offset */
+#piano-keys .key.sharp[data-note="49"] { left: 39px; } /* C#3 */
+#piano-keys .key.sharp[data-note="51"] { left: 77px; } /* D#3 */
+#piano-keys .key.sharp[data-note="54"] { left: 153px; } /* F#3 */
+#piano-keys .key.sharp[data-note="56"] { left: 191px; } /* G#3 */
+#piano-keys .key.sharp[data-note="58"] { left: 229px; } /* A#3 */
+#piano-keys .key.sharp[data-note="61"] { left: 305px; } /* C#4 */
+#piano-keys .key.sharp[data-note="63"] { left: 343px; } /* D#4 */
+#piano-keys .key.sharp[data-note="66"] { left: 419px; } /* F#4 */
+#piano-keys .key.sharp[data-note="68"] { left: 457px; } /* G#4 */
+#piano-keys .key.sharp[data-note="70"] { left: 495px; } /* A#4 */
+
+#piano-keys .key.highlighted { 
+  background: var(--accent) !important;
+  color: #092823 !important;
+  box-shadow: 0 0 8px var(--accent) !important;
+}
+
+#piano-keys .key.sharp.highlighted { 
+  background: var(--accent) !important;
+  color: #092823 !important;
+}
+
+#piano-keys .key.playing {
+  background: #ddd !important;
+  transform: translateY(2px);
+}
+
+#piano-keys .key.sharp.playing {
+  background: #555 !important;
+  transform: translateY(2px);
+}
+
+/* MIDI Input Selector */
+.midi-input-selector {
+  position: relative;
+  width: 100%;
+}
+
+.midi-input-header {
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+  min-height: 40px;
+}
+
+.midi-input-header:hover {
+  background: #151a24;
+}
+
+.midi-input-summary {
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+}
+
+.dropdown-arrow {
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.midi-input-header.expanded .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.midi-input-dropdown {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.midi-input-dropdown.show {
+  display: block;
+}
+
+.midi-input-list {
+  padding: 8px 0;
+}
+
+.midi-input-item {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.midi-input-item:hover {
+  background: #151a24;
+}
+
+.midi-input-item input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--accent);
+}
+
+.midi-input-item label {
+  margin: 0;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bluetooth-icon {
+  width: 14px;
+  height: 14px;
+  fill: var(--accent);
+  flex-shrink: 0;
+}
+
+.device-type-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.device-type-icon.melodic {
+  fill: var(--good);
+}
+
+.device-type-icon.drum {
+  fill: #ff9500;
+}
+
+.device-type-icon.controller {
+  fill: var(--muted);
+}
+
+.midi-input-item.non-melodic {
+  opacity: 0.6;
+}
+
+.midi-input-item.non-melodic:hover {
+  opacity: 0.8;
+}
+
+/* MIDI Output Selector (reusing input selector styles) */
+.midi-output-selector {
+  position: relative;
+  width: 100%;
+}
+
+.midi-output-header {
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+  min-height: 40px;
+}
+
+.midi-output-header:hover {
+  background: #151a24;
+}
+
+.midi-output-summary {
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+}
+
+.midi-output-header.expanded .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.midi-output-dropdown {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 8px;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.midi-output-dropdown.show {
+  display: block;
+}
+
+.midi-output-list {
+  padding: 8px 0;
+}
+
+.midi-output-item {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.midi-output-item:hover {
+  background: #151a24;
+}
+
+.midi-output-item input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--accent);
+}
+
+.midi-output-item label {
+  margin: 0;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
