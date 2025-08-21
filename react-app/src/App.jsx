@@ -71,7 +71,11 @@ function App() {
       window.lumiService = lumiService;
       window.analyticsService = analyticsService;
       window.gameService = gameService;
-      console.log('🔧 Exposed lumiService, analyticsService, and gameService to window for testing');
+      window.levelService = levelService;
+      window.parseKey = parseKey;
+      window.rangeToMidi = rangeToMidi;
+      window.appState = appState;
+      console.log('🔧 Exposed services to window for testing');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -100,6 +104,8 @@ function App() {
         homeNoteFrequency: 'always', 
         practiceTarget: '10', 
         volume: 70,
+        trainingMode: true,
+        currentLevel: levelService.getCurrentLevel(),
         ...savedSettings 
       };
       setupGameCallbacks(initialSettings);
@@ -108,7 +114,7 @@ function App() {
       setAppState(prev => ({
         ...prev,
         midiEnabled: true,
-        settings: { ...prev.settings, ...savedSettings },
+        settings: { ...prev.settings, ...initialSettings },
         midiDevices: {
           inputs: midiService.inputs,
           outputs: midiService.outputs,
@@ -146,6 +152,25 @@ function App() {
         const keySignature = `${currentSettings.rootKey}-${currentSettings.scale}`;
         const keySet = parseKey(keySignature);
         const [low, high] = rangeToMidi(currentSettings.range);
+        
+        if (currentSettings.trainingMode) {
+          // In training mode, restrict to current level notes
+          // Use the low MIDI note as the root to get proper octave
+          const rootKeyMidi = low + (keySet[0] - (low % 12) + 12) % 12;
+          const availableNotes = levelService.getAvailableNotes(currentSettings.currentLevel, rootKeyMidi);
+          
+          if (availableNotes && availableNotes.length > 0 && low !== null && high !== null) {
+            // Filter available notes to the specified range
+            const notesInRange = availableNotes.filter(note => note >= low && note <= high);
+            
+            if (notesInRange.length > 0) {
+              const chosen = notesInRange[Math.floor(Math.random() * notesInRange.length)];
+              return chosen;
+            }
+          }
+        }
+        
+        // Advanced mode or fallback - use full key set
         return randomNoteInKey(keySet, [low, high]);
       },
       onTarget: async (target) => {
@@ -398,9 +423,11 @@ function App() {
       // In training mode, only highlight current level notes
       const rootKeyMidi = keySet[0];
       const availableNotes = levelService.getAvailableNotes(appState.settings.currentLevel, rootKeyMidi);
-      notesToHighlight = new Set(availableNotes);
+      // Convert to note classes (0-11) for highlighting
+      const noteClasses = availableNotes.map(note => note % 12);
+      notesToHighlight = new Set(noteClasses);
     } else {
-      // Advanced mode - highlight full key set
+      // Advanced mode - highlight full key set  
       notesToHighlight = new Set(keySet);
     }
     
