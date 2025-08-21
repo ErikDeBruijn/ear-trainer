@@ -170,7 +170,8 @@ function App() {
         setStatus(`Session complete! Final score: ${summary.score}`);
         
         // End analytics session and save data
-        const sessionData = analyticsService.endSession(summary);
+        const currentGameState = gameService.getState();
+        const sessionData = analyticsService.endSession(currentGameState);
         if (sessionData) {
           console.log(`📊 Session saved: ${sessionData.summary.accuracy}% accuracy, ${sessionData.summary.totalNotes} notes`);
         }
@@ -520,8 +521,20 @@ function App() {
     setShowStatsScreen(false);
   };
 
+  const handlePracticeWeakSpot = (noteName) => {
+    // Map note name to root key (remove # and /b)
+    const rootKey = noteName.includes('#') ? noteName.replace('#', '#') : noteName.split('/')[0];
+    
+    // Update settings to practice this key
+    updateSettings({ rootKey });
+    
+    // Close stats and start practice
+    setShowStatsScreen(false);
+    startGame();
+  };
+
   if (showStatsScreen) {
-    return <StatsScreen onClose={handleCloseStats} />;
+    return <StatsScreen onClose={handleCloseStats} onPracticeWeakSpot={handlePracticeWeakSpot} />;
   }
 
   return (

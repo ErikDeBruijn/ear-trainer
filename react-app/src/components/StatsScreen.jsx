@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { analyticsService } from '../services/analyticsService.js';
 
-function StatsScreen({ onClose }) {
+function StatsScreen({ onClose, onPracticeWeakSpot }) {
     const [stats, setStats] = useState(null);
     const [recentSessions, setRecentSessions] = useState([]);
     const [weakSpots, setWeakSpots] = useState([]);
@@ -172,7 +172,15 @@ function StatsScreen({ onClose }) {
                                             </div>
                                             <div className="accuracy-text">
                                                 {spot.accuracy}% ({spot.correct}/{spot.attempts})
-                                                {index < 2 && <span className="focus-hint"> • Focus here!</span>}
+                                                {index < 2 && (
+                                                    <button 
+                                                        className="practice-button"
+                                                        onClick={() => onPracticeWeakSpot && onPracticeWeakSpot(spot.noteName)}
+                                                        title={`Start practicing ${spot.noteName} notes`}
+                                                    >
+                                                        Practice
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -218,7 +226,7 @@ function StatsScreen({ onClose }) {
                                         <div 
                                             className="trend-fill"
                                             style={{ 
-                                                height: `${day.averageAccuracy}%`,
+                                                height: `${Math.max(day.averageAccuracy, 5)}%`,
                                                 backgroundColor: getAccuracyColor(day.averageAccuracy)
                                             }}
                                             title={`${day.date}: ${Math.round(day.averageAccuracy)}% (${day.totalSessions} sessions)`}

@@ -648,6 +648,24 @@ button.secondary { cursor:pointer; }
   font-weight: 600;
 }
 
+.practice-button {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+}
+
+.practice-button:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
 .weak-spots {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -742,6 +760,7 @@ button.secondary { cursor:pointer; }
 .trend-bar {
   display: flex;
   flex-direction: column;
+  justify-content: end;
   align-items: center;
   min-width: 20px;
   height: 100%;
