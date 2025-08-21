@@ -57,8 +57,13 @@ function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnsw
                 classes.push('in-scale');
                 
                 // Check if this is the home note (root of the key)
+                // Only highlight the lowest instance of the home note in the range
                 if (homeNote !== undefined && (key.note % 12) === homeNote) {
-                    classes.push('home-note');
+                    // Find the lowest instance of this note class in the range
+                    const lowestHomeNote = low + ((homeNote - (low % 12) + 12) % 12);
+                    if (key.note === lowestHomeNote) {
+                        classes.push('home-note');
+                    }
                 }
             }
         }
