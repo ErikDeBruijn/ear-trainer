@@ -27,6 +27,7 @@ function App() {
   
   // Core app state
   const [showStatsScreen, setShowStatsScreen] = useState(false);
+  const [levelUnlockNotification, setLevelUnlockNotification] = useState(null);
   const [appState, setAppState] = useState({
     midiEnabled: false,
     gameState: 'idle',
@@ -35,7 +36,7 @@ function App() {
       scale: 'major',
       range: 'C3-B4',
       homeNoteFrequency: 'always',
-      practiceTarget: '10',
+      practiceTarget: '4',
       volume: 70,
       settingsVisible: false,
       trainingMode: true,
@@ -202,6 +203,11 @@ function App() {
         const sessionData = analyticsService.endSession(currentGameState);
         if (sessionData) {
           console.log(`📊 Session saved: ${sessionData.summary.accuracy}% accuracy, ${sessionData.summary.totalNotes} notes`);
+        }
+        
+        // Check for level progression in training mode
+        if (currentSettings.trainingMode && sessionData) {
+          checkLevelProgression(sessionData);
         }
         
         // Confetti celebration
@@ -527,6 +533,50 @@ function App() {
     return frequencies[setting] || 1.0;
   };
 
+  const checkLevelProgression = (sessionData) => {
+    const currentLevel = appState.settings.currentLevel;
+    if (currentLevel >= 7) return; // Already at max level
+    
+    // Get recent performance for current level
+    const recentSessions = analyticsService.getRecentSessions(10);
+    const currentLevelSessions = recentSessions.filter(session => 
+      session.settings.trainingMode && 
+      session.settings.currentLevel === currentLevel
+    );
+    
+    if (currentLevelSessions.length === 0) return;
+    
+    // Calculate performance metrics
+    const totalAccuracy = currentLevelSessions.reduce((sum, session) => sum + session.summary.accuracy, 0);
+    const averageAccuracy = totalAccuracy / currentLevelSessions.length;
+    const sessionCount = currentLevelSessions.length;
+    
+    const recentPerformance = { averageAccuracy, sessionCount };
+    
+    // Check if can advance
+    if (levelService.canAdvanceLevel(currentLevel, recentPerformance)) {
+      // Show unlock notification after a brief delay
+      setTimeout(() => {
+        const nextLevel = currentLevel + 1;
+        const nextLevelInfo = levelService.getLevelInfo(nextLevel);
+        
+        // Show prominent unlock notification
+        setLevelUnlockNotification({
+          level: nextLevel,
+          name: nextLevelInfo.name,
+          description: nextLevelInfo.description
+        });
+        
+        // Auto-advance to next level
+        const newLevel = levelService.advanceLevel();
+        updateSettings({ currentLevel: newLevel });
+        
+        // Clear notification after 5 seconds
+        setTimeout(() => setLevelUnlockNotification(null), 5000);
+      }, 2000); // Show after confetti
+    }
+  };
+
   const handlePianoKeyPress = (midiNote) => {
     // Always handle piano key presses - the duplicate prevention is in handleAnswer
     handleAnswer(midiNote);
@@ -617,6 +667,23 @@ function App() {
       </section>
       
       <LatestSessions onViewAll={handleViewAllStats} />
+      
+      {levelUnlockNotification && (
+        <div className="level-unlock-overlay">
+          <div className="level-unlock-notification">
+            <div className="unlock-icon">🔓</div>
+            <div className="unlock-title">Level {levelUnlockNotification.level} Unlocked!</div>
+            <div className="unlock-name">{levelUnlockNotification.name}</div>
+            <div className="unlock-description">{levelUnlockNotification.description}</div>
+            <button 
+              className="unlock-dismiss"
+              onClick={() => setLevelUnlockNotification(null)}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
       
       <div id="overlay-flash" aria-hidden="true"></div>
     </div>

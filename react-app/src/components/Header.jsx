@@ -121,6 +121,16 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
                                         <div className="level-description">
                                             {getLevelDescription(settings.currentLevel)}
                                         </div>
+                                        {settings.currentLevel < 7 && (
+                                            <div className="next-level-preview">
+                                                🔒 Level {settings.currentLevel + 1}: {getLevelName(settings.currentLevel + 1)}
+                                            </div>
+                                        )}
+                                        {settings.currentLevel === 7 && (
+                                            <div className="max-level-achieved">
+                                                🏆 Maximum level achieved!
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -292,6 +302,7 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
                                     value={settings.practiceTarget} 
                                     onChange={(e) => handleInputChange('practiceTarget', e.target.value)}
                                 >
+                                    <option value="4">4 notes</option>
                                     <option value="10">10 notes</option>
                                     <option value="20">20 notes</option>
                                     <option value="30">30 notes</option>
