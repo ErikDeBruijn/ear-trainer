@@ -19,14 +19,12 @@ const savedSettings = store.load();
 function initializeSettings() {
     const keySelect = document.getElementById("key-select");
     const rangeSelect = document.getElementById("range-select");
-    const audibleResponseSelect = document.getElementById("audible-response");
     const homeNoteSelect = document.getElementById("home-note-frequency");
     const practiceTargetSelect = document.getElementById("practice-target");
 
     // Restore saved values
     if (savedSettings.keySelect) keySelect.value = savedSettings.keySelect;
     if (savedSettings.rangeSelect) rangeSelect.value = savedSettings.rangeSelect;
-    if (savedSettings.audibleResponse) audibleResponseSelect.value = savedSettings.audibleResponse;
     if (savedSettings.homeNoteFrequency) homeNoteSelect.value = savedSettings.homeNoteFrequency;
     if (savedSettings.practiceTarget) practiceTargetSelect.value = savedSettings.practiceTarget;
 
@@ -90,7 +88,6 @@ function saveSettings() {
         ...currentSettings,
         keySelect: document.getElementById("key-select").value,
         rangeSelect: document.getElementById("range-select").value,
-        audibleResponse: document.getElementById("audible-response").value,
         homeNoteFrequency: document.getElementById("home-note-frequency").value,
         practiceTarget: document.getElementById("practice-target").value,
         volume: document.getElementById("volume-slider").value
@@ -104,7 +101,7 @@ let range = rangeToMidi(document.getElementById("range-select").value);
 ui.setKeyboardRange(range[0], range[1]);
 setScaleColors(keySet, range[0], range[1]);
 ui.highlightScaleNotes(keySet, range[0], range[1]);
-let audibleResponse = document.getElementById("audible-response").value || "correct-only";
+// Always play sustained audible feedback - simplified from audible response setting
 let homeNoteFrequency = document.getElementById("home-note-frequency").value || "always";
 let practiceTarget = parseInt(document.getElementById("practice-target").value) || 10;
 
@@ -286,15 +283,7 @@ async function boot() {
         saveSettings();
     });
 
-    // Audible response selector
-    const audibleResponseSel = document.getElementById("audible-response");
-    if (audibleResponseSel) {
-      audibleResponseSel.addEventListener("change", e => { 
-        audibleResponse = e.target.value; 
-        saveSettings();
-      });
-      audibleResponse = audibleResponseSel.value || "correct-only";
-    }
+    // Audible response setting removed - always provide sustained feedback
 
     // Home note frequency selector
     const homeNoteSel = document.getElementById("home-note-frequency");
@@ -870,16 +859,18 @@ function handleAnswer(midiNote) {
       // Check if practice target is reached
       if (game.correct >= practiceTarget) {
         setTimeout(() => {
-            // Set flag to finish game when key is released
+            // Set flag to finish game when the correct key is released
             game.waitingForKeyRelease = true;
+            game.waitingForNoteRelease = midiNote; // Track which specific note
             game.pendingFinish = true;
         }, RESULT_HOLD_MS);
       } else {
         // Only move to next round if the answer is correct and target not reached
         // Wait for result feedback, then wait for key release before next round
         setTimeout(() => {
-            // Set flag to proceed to next round when key is released
+            // Set flag to proceed to next round when the correct key is released
             game.waitingForKeyRelease = true;
+            game.waitingForNoteRelease = midiNote; // Track which specific note
             game.pendingNextRound = true;
         }, RESULT_HOLD_MS);
       }
@@ -904,8 +895,10 @@ function handleNoteOff(midiNote) {
     audio.stopSustainedNote(midiNote);
     
     // Check what action is pending after key release
-    if (game.waitingForKeyRelease) {
+    // IMPORTANT: Only proceed if the specific correct note is released
+    if (game.waitingForKeyRelease && game.waitingForNoteRelease === midiNote) {
         game.waitingForKeyRelease = false;
+        game.waitingForNoteRelease = null;
         
         if (game.pendingNextRound) {
             game.pendingNextRound = false;
