@@ -59,8 +59,6 @@ function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnsw
                 // Check if this is the home note (root of the key)
                 // Highlight ALL instances of the home note in the range
                 if (homeNote !== undefined && (key.note % 12) === homeNote) {
-                    // Debug logging for home note highlighting
-                    console.log(`🏠 Home note: MIDI ${key.note} (${key.note % 12}), homeNote=${homeNote}`);
                     classes.push('home-note');
                 }
             }
