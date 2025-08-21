@@ -113,14 +113,27 @@ const MODE_COMMANDS = {
   'night': [0x10, 0x40, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00]    // night mode
 };
 
-// Scale commands based on LUMI protocol documentation
+// Scale commands based on oracle implementation at xivilay.github.io/lumi-web-control
 const SCALE_COMMANDS = {
   'major': [0x10, 0x60, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00],
   'minor': [0x10, 0x60, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00],
   'harmonic-minor': [0x10, 0x60, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'chromatic': [0x10, 0x60, 0x42, 0x04, 0x00, 0x00, 0x00, 0x00],
+  'pentatonic-neutral': [0x10, 0x60, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00],
   'pentatonic-major': [0x10, 0x60, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'pentatonic-minor': [0x10, 0x60, 0x22, 0x01, 0x00, 0x00, 0x00, 0x00]
+  'pentatonic-minor': [0x10, 0x60, 0x22, 0x01, 0x00, 0x00, 0x00, 0x00],
+  'blues': [0x10, 0x60, 0x42, 0x01, 0x00, 0x00, 0x00, 0x00],
+  'dorian': [0x10, 0x60, 0x62, 0x01, 0x00, 0x00, 0x00, 0x00],
+  'phrygian': [0x10, 0x60, 0x02, 0x02, 0x00, 0x00, 0x00, 0x00],
+  'lydian': [0x10, 0x60, 0x22, 0x02, 0x00, 0x00, 0x00, 0x00],
+  'mixolydian': [0x10, 0x60, 0x42, 0x02, 0x00, 0x00, 0x00, 0x00],
+  'locrian': [0x10, 0x60, 0x62, 0x02, 0x00, 0x00, 0x00, 0x00],
+  'whole-tone': [0x10, 0x60, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00],
+  'arabic-a': [0x10, 0x60, 0x22, 0x03, 0x00, 0x00, 0x00, 0x00],
+  'arabic-b': [0x10, 0x60, 0x42, 0x03, 0x00, 0x00, 0x00, 0x00],
+  'japanese': [0x10, 0x60, 0x62, 0x03, 0x00, 0x00, 0x00, 0x00],
+  'ryukyu': [0x10, 0x60, 0x02, 0x04, 0x00, 0x00, 0x00, 0x00],
+  '8-tone-spanish': [0x10, 0x60, 0x22, 0x04, 0x00, 0x00, 0x00, 0x00],
+  'chromatic': [0x10, 0x60, 0x42, 0x04, 0x00, 0x00, 0x00, 0x00]
 };
 
 function cmdMode(mode) {
@@ -323,19 +336,10 @@ class LumiService {
   }
 
   setRootKey(keySignature) {
-    console.log(`🔑 setRootKey called with: ${keySignature}`);
-    console.log(`🔑 midiOut=${!!this.midiOut}, isLumi=${this.isLumi}`);
-    
-    if (!this.midiOut || !this.isLumi) {
-      console.log(`🔑 Early exit: midiOut or isLumi check failed`);
-      return;
-    }
+    if (!this.midiOut || !this.isLumi) return;
 
     const rootNote = keySignature.split('-')[0];
-    console.log(`🔑 Extracted root note: ${rootNote}`);
-    
     const command = ROOT_KEY_COMMANDS[rootNote];
-    console.log(`🔑 Command for ${rootNote}:`, command);
 
     if (!command) {
       console.warn(`Unknown root key: ${rootNote}`);
@@ -343,11 +347,9 @@ class LumiService {
     }
 
     try {
-      const frame = buildFrameFromCmd8(command); // Back to 8-byte command format
+      const frame = buildFrameFromCmd8(command);
       console.log(`🎹 Setting LUMI root key to: ${rootNote}`);
-      console.log(`📤 Sending SysEx frame:`, frame.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
       this.midiOut.send(frame);
-      console.log(`✅ LUMI root key set to: ${rootNote}`);
     } catch (e) {
       console.warn("Failed to set root key:", e);
     }
@@ -383,10 +385,17 @@ class LumiService {
   setScale(scale) {
     if (!this.midiOut || !this.isLumi) return;
 
+    const command = SCALE_COMMANDS[scale.toLowerCase()];
+
+    if (!command) {
+      console.warn(`Unknown scale: ${scale}`);
+      return;
+    }
+
     try {
-      const frame = buildScale(scale);
+      const frame = buildFrameFromCmd8(command);
+      console.log(`🎵 Setting LUMI scale to: ${scale}`);
       this.midiOut.send(frame);
-      console.log(`🎵 LUMI scale set to: ${scale}`);
     } catch (e) {
       console.warn("Failed to set LUMI scale:", e);
     }
