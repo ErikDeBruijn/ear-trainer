@@ -741,6 +741,8 @@ async function boot() {
             );
             if (validInputs.length > 0) {
                 midi.setActiveInputs(validInputs);
+                // Update the UI to show the restored devices
+                updateMidiInputs();
                 midi.onNote(ev => { 
                     if (ev.type === "on") {
                         // Start sustained audible feedback immediately for any key press
@@ -771,6 +773,9 @@ async function boot() {
                     ...savedSettings,
                     midiOutputDevices: outputDevices
                 });
+                
+                // Update the UI to show the auto-selected devices
+                updateMidiOutputs();
             }
         }
         
