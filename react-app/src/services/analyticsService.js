@@ -196,33 +196,40 @@ class AnalyticsService {
     })).sort((a, b) => new Date(a.date) - new Date(b.date));
   }
 
-  // Identify weak spots across all sessions
+  // Identify weak spots by key-scale combinations across all sessions
   getWeakSpots(sessionCount = 20) {
     const recentSessions = this.getRecentSessions(sessionCount);
     const combinedWeakSpots = {};
-    const noteNames = ['C', 'C#/Db', 'D', 'D#/Eb', 'E', 'F', 'F#/Gb', 'G', 'G#/Ab', 'A', 'A#/Bb', 'B'];
 
-    // Combine weak spot data across sessions
+    // Combine weak spot data by key-scale context
     recentSessions.forEach(session => {
-      Object.entries(session.weakSpots || {}).forEach(([noteClass, stats]) => {
-        if (!combinedWeakSpots[noteClass]) {
-          combinedWeakSpots[noteClass] = { attempts: 0, correct: 0 };
-        }
-        combinedWeakSpots[noteClass].attempts += stats.attempts;
-        combinedWeakSpots[noteClass].correct += stats.correct;
-      });
+      const keyScale = `${session.settings.rootKey} ${session.settings.scale}`;
+      
+      if (!combinedWeakSpots[keyScale]) {
+        combinedWeakSpots[keyScale] = { 
+          attempts: 0, 
+          correct: 0,
+          rootKey: session.settings.rootKey,
+          scale: session.settings.scale
+        };
+      }
+      
+      combinedWeakSpots[keyScale].attempts += session.summary.totalNotes;
+      combinedWeakSpots[keyScale].correct += session.summary.correctNotes;
     });
 
     // Convert to array with accuracy calculations
     return Object.entries(combinedWeakSpots)
-      .map(([noteClass, stats]) => ({
-        noteClass: parseInt(noteClass),
-        noteName: noteNames[parseInt(noteClass)],
+      .map(([keyScale, stats]) => ({
+        keyScale,
+        displayName: keyScale,
+        rootKey: stats.rootKey,
+        scale: stats.scale,
         attempts: stats.attempts,
         correct: stats.correct,
         accuracy: stats.attempts > 0 ? Math.round((stats.correct / stats.attempts) * 100) : 0
       }))
-      .filter(spot => spot.attempts >= 3) // Only include notes attempted at least 3 times
+      .filter(spot => spot.attempts >= 10) // Only include keys practiced at least 10 notes
       .sort((a, b) => a.accuracy - b.accuracy); // Worst accuracy first
   }
 

@@ -159,8 +159,8 @@ function StatsScreen({ onClose, onPracticeWeakSpot }) {
                                 {weakSpots.slice(0, 6).map((spot, index) => {
                                     const allAccuracies = weakSpots.map(s => s.accuracy);
                                     return (
-                                        <div key={spot.noteClass} className="weak-spot">
-                                            <div className="note-name">{spot.noteName}</div>
+                                        <div key={spot.keyScale} className="weak-spot">
+                                            <div className="note-name">{spot.displayName}</div>
                                             <div className="accuracy-bar">
                                                 <div 
                                                     className="accuracy-fill"
@@ -175,8 +175,8 @@ function StatsScreen({ onClose, onPracticeWeakSpot }) {
                                                 {index < 2 && (
                                                     <button 
                                                         className="practice-button"
-                                                        onClick={() => onPracticeWeakSpot && onPracticeWeakSpot(spot.noteName)}
-                                                        title={`Start practicing ${spot.noteName} notes`}
+                                                        onClick={() => onPracticeWeakSpot && onPracticeWeakSpot(spot.rootKey, spot.scale)}
+                                                        title={`Start practicing ${spot.displayName}`}
                                                     >
                                                         Practice
                                                     </button>

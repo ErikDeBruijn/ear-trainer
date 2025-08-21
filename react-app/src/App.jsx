@@ -521,12 +521,12 @@ function App() {
     setShowStatsScreen(false);
   };
 
-  const handlePracticeWeakSpot = (noteName) => {
-    // Map note name to root key (remove # and /b)
-    const rootKey = noteName.includes('#') ? noteName.replace('#', '#') : noteName.split('/')[0];
+  const handlePracticeWeakSpot = (rootKey, scale) => {
+    // Update settings to practice this exact key-scale combination
+    updateSettings({ rootKey, scale });
     
-    // Update settings to practice this key
-    updateSettings({ rootKey });
+    // Ensure scale highlighting is updated immediately
+    updateScaleHighlighting(`${rootKey}-${scale}`);
     
     // Close stats and start practice
     setShowStatsScreen(false);
