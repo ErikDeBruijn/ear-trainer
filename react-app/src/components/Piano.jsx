@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { rangeToMidi } from '../services/theoryService.js';
 
-function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnswer }) {
+function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnswer, homeNote }) {
     // Piano keys with their MIDI note numbers and labels
     const keys = [
         { note: 48, label: 'C3', sharp: false },
@@ -55,6 +55,11 @@ function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnsw
             const [low, high] = rangeToMidi(noteRange);
             if (key.note >= low && key.note <= high) {
                 classes.push('in-scale');
+                
+                // Check if this is the home note (root of the key)
+                if (homeNote !== undefined && (key.note % 12) === homeNote) {
+                    classes.push('home-note');
+                }
             }
         }
         

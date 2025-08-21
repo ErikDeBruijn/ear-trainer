@@ -48,7 +48,8 @@ function App() {
     status: '',
     activeNotes: new Set(),
     scaleNotes: new Set(),
-    currentIncorrectNote: null
+    currentIncorrectNote: null,
+    homeNote: 0 // Default to C
   });
 
   // Initialize MIDI and load settings
@@ -338,9 +339,11 @@ function App() {
 
   const updateScaleHighlighting = (key = appState.settings.key) => {
     const keySet = parseKey(key);
+    const homeNote = keySet[0]; // First note in the key set is the root/home note
     setAppState(prev => ({
       ...prev,
-      scaleNotes: new Set(keySet)
+      scaleNotes: new Set(keySet),
+      homeNote: homeNote
     }));
     
     // Also update LUMI keyboard lighting
@@ -468,6 +471,7 @@ function App() {
           noteRange={appState.settings.range}
           onKeyPress={handlePianoKeyPress}
           isIncorrectAnswer={isIncorrectAnswer}
+          homeNote={appState.homeNote}
         />
         
         <HUD 

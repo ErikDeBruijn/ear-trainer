@@ -254,6 +254,19 @@ button.secondary { cursor:pointer; }
   color: white !important;
 }
 
+/* Home note highlighting - bright white for root note of key */
+#piano-keys .key.home-note {
+  background: #ffffff !important; /* Bright white like ROLI */
+  color: #333 !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
+}
+
+#piano-keys .key.sharp.home-note {
+  background: #ffffff !important; /* Bright white like ROLI */
+  color: #333 !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
+}
+
 /* Active note highlighting - currently pressed keys (correct) */
 #piano-keys .key.active {
   background: #00ff00 !important; /* Bright green for correct */
