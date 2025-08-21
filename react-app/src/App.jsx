@@ -216,7 +216,7 @@ function App() {
         updateGameData();
         // Reset flag after processing is complete
         processingAnswerRef.current = false;
-      }, 100);
+      }, 750); // Brief pause before next note
     } else {
       console.log(`❌ Incorrect! Try again.`);
       flashScreen('incorrect');
