@@ -6,6 +6,7 @@ function StatsScreen({ onClose }) {
     const [recentSessions, setRecentSessions] = useState([]);
     const [weakSpots, setWeakSpots] = useState([]);
     const [accuracyTrend, setAccuracyTrend] = useState([]);
+    const [todaysTrend, setTodaysTrend] = useState([]);
     const [selectedTimeframe, setSelectedTimeframe] = useState('20'); // sessions
     
     useEffect(() => {
@@ -18,11 +19,13 @@ function StatsScreen({ onClose }) {
         const sessions = analyticsService.getRecentSessions(sessionCount);
         const spots = analyticsService.getWeakSpots(sessionCount);
         const trend = analyticsService.getAccuracyTrend(30); // last 30 days
+        const todaysProgress = analyticsService.getTodaysTrend();
         
         setStats(performanceStats);
         setRecentSessions(sessions);
         setWeakSpots(spots);
         setAccuracyTrend(trend);
+        setTodaysTrend(todaysProgress);
     };
     
     const formatSessionSettings = (settings) => {
@@ -174,6 +177,33 @@ function StatsScreen({ onClose }) {
                                         </div>
                                     );
                                 })}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Today's Progress */}
+                    {todaysTrend.length > 1 && (
+                        <div className="stats-section">
+                            <h2>📈 Today's Progress</h2>
+                            <p className="section-subtitle">
+                                Session-by-session accuracy for today • {todaysTrend.length} sessions completed
+                            </p>
+                            <div className="todays-trend-chart">
+                                {todaysTrend.map((session, index) => (
+                                    <div key={session.sessionNumber} className="today-session">
+                                        <div 
+                                            className="today-session-bar"
+                                            style={{ 
+                                                height: `${Math.max(session.accuracy, 5)}%`,
+                                                backgroundColor: getAccuracyColor(session.accuracy)
+                                            }}
+                                            title={`Session ${session.sessionNumber} at ${session.time}: ${session.accuracy}% (${session.totalNotes} notes, score: ${session.score})`}
+                                        ></div>
+                                        <div className="today-session-label">
+                                            {session.sessionNumber}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}

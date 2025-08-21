@@ -150,6 +150,25 @@ class AnalyticsService {
     });
   }
 
+  // Get today's session-by-session accuracy trend
+  getTodaysTrend() {
+    const today = new Date().toISOString().split('T')[0];
+    const allSessions = this.getAllSessions();
+    
+    const todaysSessions = allSessions.filter(session => {
+      const sessionDate = new Date(session.startTime).toISOString().split('T')[0];
+      return sessionDate === today;
+    }).sort((a, b) => a.startTime - b.startTime); // Chronological order
+    
+    return todaysSessions.map((session, index) => ({
+      sessionNumber: index + 1,
+      accuracy: session.summary.accuracy,
+      time: new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      totalNotes: session.summary.totalNotes,
+      score: session.summary.score
+    }));
+  }
+
   // Analyze accuracy trends over time
   getAccuracyTrend(days = 30) {
     const endDate = new Date();

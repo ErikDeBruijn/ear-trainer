@@ -687,6 +687,45 @@ button.secondary { cursor:pointer; }
   color: var(--muted);
 }
 
+.todays-trend-chart {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  height: 100px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.today-session {
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  align-items: center;
+  min-width: 40px;
+  height: 100%;
+}
+
+.today-session-bar {
+  width: 20px;
+  min-height: 8px;
+  border-radius: 4px 4px 0 0;
+  transition: all 0.2s ease;
+}
+
+.today-session-bar:hover {
+  opacity: 0.8;
+}
+
+.today-session-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
 .trend-chart {
   display: flex;
   align-items: end;

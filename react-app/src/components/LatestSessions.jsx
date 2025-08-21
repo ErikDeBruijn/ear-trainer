@@ -27,7 +27,7 @@ function LatestSessions({ onViewAll }) {
         const diffMs = now - date;
         const diffMinutes = Math.floor(diffMs / (1000 * 60));
         
-        if (diffMinutes < 1) {
+        if (diffMinutes <= 1) {
             return 'Just now';
         } else if (diffMinutes < 60) {
             return `${diffMinutes}m ago`;
