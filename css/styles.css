@@ -32,6 +32,11 @@ header { display:grid; grid-template-columns: 1fr; gap:12px; }
   transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
   max-height: 0;
   opacity: 0;
+  background: var(--panel);
+  border: 1px solid #1e2633;
+  border-radius: 0 0 12px 12px;
+  border-top: none;
+  margin-top: -1px;
 }
 .settings-panel.expanded { 
   max-height: 500px; 
@@ -39,10 +44,10 @@ header { display:grid; grid-template-columns: 1fr; gap:12px; }
 }
 .controls { 
   display: grid; 
-  grid-template-columns: repeat(8, minmax(120px,1fr)); 
-  gap: 8px; 
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+  gap: 12px; 
   align-items: end; 
-  padding: 16px 0 8px 0;
+  padding: 16px;
 }
 
 /* Game Controls */

@@ -23,7 +23,7 @@ export class AudioEngine {
         this.masterGain.gain.value = gain;
     }
     async resume() { await Tone.start(); }
-    async playMidiNote(midiNumber, duration = 0.3, sendToMidi = true, volume = 0) {
+    async playMidiNote(midiNumber, duration = 0.3, sendToMidi = true, volume = 0, isChallenge = false) {
         const freq = Tone.Frequency(midiNumber, "midi").toFrequency();
 
         // Set volume (in dB, 0 is default, negative values are quieter)
@@ -38,8 +38,14 @@ export class AudioEngine {
         }, duration * 1000 + 50);
 
         // Send to MIDI out if requested
-        if (sendToMidi && midi.out) {
-            midi.sendNote(midiNumber, 0.8, duration * 1000);
+        if (sendToMidi) {
+            if (isChallenge) {
+                // Challenge notes: send only to non-LUMI devices
+                midi.sendChallengeNote(midiNumber, 0.8, duration * 1000);
+            } else {
+                // Feedback notes: send to all devices including LUMI
+                midi.sendNote(midiNumber, 0.8, duration * 1000);
+            }
         }
     }
 
@@ -59,19 +65,19 @@ export class AudioEngine {
 
             // "ta" is a perfect fourth below the tonic
             const taNoteNumber = tonicMidi - 5; // Perfect fourth below
-            await this.playMidiNote(taNoteNumber, 0.25, true, resolutionVolume); // Play "ta"
+            await this.playMidiNote(taNoteNumber, 0.25, true, resolutionVolume, false); // Play "ta" - feedback, not challenge
             await new Promise(resolve => setTimeout(resolve, 0.25 * 1000));
 
             // Play "da" (tonic/resolution) and send to MIDI out
-            await this.playMidiNote(tonicMidi, tonicDuration, true, resolutionVolume);
+            await this.playMidiNote(tonicMidi, tonicDuration, true, resolutionVolume, false); // Tonic - feedback, not challenge
             await new Promise(resolve => setTimeout(resolve, (tonicDuration + gap) * 1000));
         } else {
             // If no resolution, just wait a bit before playing target
             await new Promise(resolve => setTimeout(resolve, gap * 1000));
         }
 
-        // Play target note but don't send to MIDI out (at normal volume)
-        await this.playMidiNote(targetMidi, targetDuration, false);
+        // Play target note - this is the challenge, so route to non-LUMI devices only
+        await this.playMidiNote(targetMidi, targetDuration, true, 0, true);
     }
 
     async replayCurrentNotes() {
@@ -80,8 +86,8 @@ export class AudioEngine {
                 // Replay both tonic and target - always play resolution during replay
                 await this.playTonicThenTarget(this.currentTonic, this.currentTarget, 0.5, 0.3, 0.35, 1.0);
             } else {
-                // Only replay target note (no tonic)
-                await this.playMidiNote(this.currentTarget, 0.35, false);
+                // Only replay target note (no tonic) - this is challenge replay
+                await this.playMidiNote(this.currentTarget, 0.35, true, 0, true);
             }
         }
     }

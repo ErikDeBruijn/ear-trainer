@@ -154,5 +154,45 @@ export const midi = {
         if (this.activeOutputs.length === 0 && this.out) {
             this.out.playNote(number, { attack: velocity, duration: durationMs });
         }
+    },
+
+    // Send challenge notes only to non-LUMI devices (to avoid giving away the answer)
+    sendChallengeNote(number = 60, velocity = 0.8, durationMs = 300) {
+        // Filter out LUMI devices from active outputs
+        const nonLumiDevices = this.activeOutputs.filter(device => !this.isLumiDevice(device));
+        
+        nonLumiDevices.forEach(device => {
+            device.playNote(number, { attack: velocity, duration: durationMs });
+        });
+        
+        // Legacy compatibility - use single output only if it's not LUMI and no active outputs
+        if (this.activeOutputs.length === 0 && this.out && !this.isLumiDevice(this.out)) {
+            this.out.playNote(number, { attack: velocity, duration: durationMs });
+        }
+    },
+
+    // Start a sustained note on all active output devices (note-on)
+    sendNoteOn(number = 60, velocity = 0.8) {
+        this.activeOutputs.forEach(device => {
+            // Play note without duration - this should sustain until stopNote is called
+            device.playNote(number, { attack: velocity, release: velocity });
+        });
+        
+        // Legacy compatibility - also use single output if no active outputs
+        if (this.activeOutputs.length === 0 && this.out) {
+            this.out.playNote(number, { attack: velocity, release: velocity });
+        }
+    },
+
+    // Stop a sustained note on all active output devices (note-off)
+    sendNoteOff(number = 60) {
+        this.activeOutputs.forEach(device => {
+            device.stopNote(number);
+        });
+        
+        // Legacy compatibility - also use single output if no active outputs
+        if (this.activeOutputs.length === 0 && this.out) {
+            this.out.stopNote(number);
+        }
     }
 };

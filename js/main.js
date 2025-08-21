@@ -93,9 +93,8 @@ function saveSettings() {
         audibleResponse: document.getElementById("audible-response").value,
         homeNoteFrequency: document.getElementById("home-note-frequency").value,
         practiceTarget: document.getElementById("practice-target").value,
-        volume: document.getElementById("volume-slider").value,
-        midiInDevice: document.getElementById("midi-in").value,
-        midiOutDevice: document.getElementById("midi-out").value
+        volume: document.getElementById("volume-slider").value
+        // MIDI device settings are now saved separately via checkbox handlers
     };
     store.save(newSettings);
 }
@@ -165,8 +164,8 @@ const game = new Game({
             audio.currentTonic = null;
             audio.currentTarget = m;
             audio.currentResolutionPlayed = false;
-            // Play target note but don't send to MIDI out
-            audio.playMidiNote(m, 0.35, false);
+            // Play target note as challenge (to non-LUMI devices only)
+            audio.playMidiNote(m, 0.35, true, 0, true);
         }
         // Start timing after audio finishes playing
         game.targetStartTime = Date.now();
@@ -472,8 +471,14 @@ async function boot() {
             midi.setActiveInputs(validInputs);
             midi.onNote(ev => { 
                 if (ev.type === "on") {
+                    // Start sustained audible feedback immediately for any key press
+                    audio.startSustainedNote(ev.note, -3);
+                    // Also send sustained MIDI note to output devices
+                    midi.sendNoteOn(ev.note, ev.velocity);
                     handleAnswer(ev.note);
                 } else if (ev.type === "off") {
+                    // Stop sustained MIDI note on output devices
+                    midi.sendNoteOff(ev.note);
                     handleNoteOff(ev.note);
                 }
             });
@@ -639,8 +644,14 @@ async function boot() {
         midi.setActiveInputs(selectedInputs);
         midi.onNote(ev => { 
             if (ev.type === "on") {
+                // Start sustained audible feedback immediately for any key press
+                audio.startSustainedNote(ev.note, -3);
+                // Also send sustained MIDI note to output devices
+                midi.sendNoteOn(ev.note, ev.velocity);
                 handleAnswer(ev.note);
             } else if (ev.type === "off") {
+                // Stop sustained MIDI note on output devices
+                midi.sendNoteOff(ev.note);
                 handleNoteOff(ev.note);
             }
         });
@@ -743,8 +754,14 @@ async function boot() {
                 midi.setActiveInputs(validInputs);
                 midi.onNote(ev => { 
                     if (ev.type === "on") {
+                        // Start sustained audible feedback immediately for any key press
+                        audio.startSustainedNote(ev.note, -3);
+                        // Also send sustained MIDI note to output devices
+                        midi.sendNoteOn(ev.note, ev.velocity);
                         handleAnswer(ev.note);
                     } else if (ev.type === "off") {
+                        // Stop sustained MIDI note on output devices
+                        midi.sendNoteOff(ev.note);
                         handleNoteOff(ev.note);
                     }
                 });
@@ -843,11 +860,8 @@ function handleAnswer(midiNote) {
     ui.flashScreen(ok ? "ok" : "bad");
     
     if (ok) {
-      if (midi.out) midi.sendNote(midiNote, 0.9, 180); // success ping
-      // Play sustained audible feedback for correct answers
-      if (audibleResponse === "correct-only" || audibleResponse === "always") {
-        audio.startSustainedNote(midiNote, -3); // Slightly quieter than default
-      }
+      // Skip MIDI success ping to avoid interfering with sustained user note
+      // Visual and audio feedback provide sufficient success indication
       setKeyColor(midiNote, "green");
       sendPrimaryGreen();
       
@@ -855,15 +869,21 @@ function handleAnswer(midiNote) {
       updateProgressBar(game.correct);
       // Check if practice target is reached
       if (game.correct >= practiceTarget) {
-        setTimeout(() => game.finish(), RESULT_HOLD_MS);
+        setTimeout(() => {
+            // Set flag to finish game when key is released
+            game.waitingForKeyRelease = true;
+            game.pendingFinish = true;
+        }, RESULT_HOLD_MS);
       } else {
         // Only move to next round if the answer is correct and target not reached
-        setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
+        // Wait for result feedback, then wait for key release before next round
+        setTimeout(() => {
+            // Set flag to proceed to next round when key is released
+            game.waitingForKeyRelease = true;
+            game.pendingNextRound = true;
+        }, RESULT_HOLD_MS);
       }
     } else {
-      if (audibleResponse === "always") {
-        audio.startSustainedNote(midiNote, -6); // Quieter for wrong answers
-      }
       setKeyColor(midiNote, "red");
       sendPrimaryRed();
     }
@@ -882,6 +902,19 @@ function handleAnswer(midiNote) {
 function handleNoteOff(midiNote) {
     // Stop sustained audible feedback when note is released
     audio.stopSustainedNote(midiNote);
+    
+    // Check what action is pending after key release
+    if (game.waitingForKeyRelease) {
+        game.waitingForKeyRelease = false;
+        
+        if (game.pendingNextRound) {
+            game.pendingNextRound = false;
+            game.nextRound();
+        } else if (game.pendingFinish) {
+            game.pendingFinish = false;
+            game.finish();
+        }
+    }
 }
 
 boot();
