@@ -70,18 +70,64 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
                     <div className={`settings-panel ${settingsVisible ? 'expanded' : ''}`}>
                         <div className="controls">
                             <label>
-                                Key
+                                Root Key
                                 <select 
-                                    value={settings.key} 
-                                    onChange={(e) => handleInputChange('key', e.target.value)}
+                                    value={settings.rootKey} 
+                                    onChange={(e) => handleInputChange('rootKey', e.target.value)}
                                 >
-                                    <option value="C-major">C major</option>
-                                    <option value="G-major">G major</option>
-                                    <option value="D-major">D major</option>
-                                    <option value="F#-major">F# major</option>
-                                    <option value="A-minor">A minor</option>
-                                    <option value="E-minor">E minor</option>
-                                    <option value="F#-minor">F# minor</option>
+                                    <option value="C">C</option>
+                                    <option value="C#">C#</option>
+                                    <option value="Db">D♭</option>
+                                    <option value="D">D</option>
+                                    <option value="D#">D#</option>
+                                    <option value="Eb">E♭</option>
+                                    <option value="E">E</option>
+                                    <option value="F">F</option>
+                                    <option value="F#">F#</option>
+                                    <option value="Gb">G♭</option>
+                                    <option value="G">G</option>
+                                    <option value="G#">G#</option>
+                                    <option value="Ab">A♭</option>
+                                    <option value="A">A</option>
+                                    <option value="A#">A#</option>
+                                    <option value="Bb">B♭</option>
+                                    <option value="B">B</option>
+                                </select>
+                            </label>
+                            
+                            <label>
+                                Scale
+                                <select 
+                                    value={settings.scale} 
+                                    onChange={(e) => handleInputChange('scale', e.target.value)}
+                                >
+                                    <optgroup label="Common Scales">
+                                        <option value="major">Major</option>
+                                        <option value="minor">Minor</option>
+                                        <option value="harmonic-minor">Harmonic Minor</option>
+                                    </optgroup>
+                                    <optgroup label="Pentatonic Scales">
+                                        <option value="pentatonic-major">Pentatonic Major</option>
+                                        <option value="pentatonic-minor">Pentatonic Minor</option>
+                                        <option value="pentatonic-neutral">Pentatonic Neutral</option>
+                                    </optgroup>
+                                    <optgroup label="Modal Scales">
+                                        <option value="dorian">Dorian</option>
+                                        <option value="phrygian">Phrygian</option>
+                                        <option value="lydian">Lydian</option>
+                                        <option value="mixolydian">Mixolydian</option>
+                                        <option value="locrian">Locrian</option>
+                                    </optgroup>
+                                    <optgroup label="Other Scales">
+                                        <option value="blues">Blues</option>
+                                        <option value="whole-tone">Whole Tone</option>
+                                        <option value="chromatic">Chromatic</option>
+                                        <option value="arabic-a">Arabic (A)</option>
+                                        <option value="arabic-b">Arabic (B)</option>
+                                        <option value="japanese">Japanese</option>
+                                        <option value="ryukyu">Ryukyu</option>
+                                        <option value="8-tone-spanish">8-tone Spanish</option>
+                                    </optgroup>
                                 </select>
                             </label>
                             

@@ -24,7 +24,8 @@ function App() {
     midiEnabled: false,
     gameState: 'idle',
     settings: {
-      key: 'C-major',
+      rootKey: 'C',
+      scale: 'major',
       range: 'C3-B4',
       homeNoteFrequency: 'always',
       practiceTarget: '10',
@@ -82,7 +83,8 @@ function App() {
       
       // Setup game callbacks with initial settings
       const initialSettings = { 
-        key: 'C-major', 
+        rootKey: 'C',
+        scale: 'major',
         range: 'C3-B4', 
         homeNoteFrequency: 'always', 
         practiceTarget: '10', 
@@ -116,7 +118,7 @@ function App() {
       // Auto-select LUMI devices if available - will be called after state update
       
       // Update scale highlighting with proper key
-      updateScaleHighlighting(initialSettings.key);
+      updateScaleHighlighting(`${initialSettings.rootKey}-${initialSettings.scale}`);
       
       // Load daily practice time
       updatePracticeTime();
@@ -130,14 +132,16 @@ function App() {
   const setupGameCallbacks = (currentSettings = appState.settings) => {
     gameService.setCallbacks({
       pickNote: () => {
-        const keySet = parseKey(currentSettings.key);
+        const keySignature = `${currentSettings.rootKey}-${currentSettings.scale}`;
+        const keySet = parseKey(keySignature);
         const [low, high] = rangeToMidi(currentSettings.range);
         return randomNoteInKey(keySet, [low, high]);
       },
       onTarget: async (target) => {
         const homeNoteFreq = getHomeNoteFrequency(currentSettings.homeNoteFrequency);
         if (homeNoteFreq > 0) {
-          const keySet = parseKey(currentSettings.key);
+          const keySignature = `${currentSettings.rootKey}-${currentSettings.scale}`;
+          const keySet = parseKey(keySignature);
           const tonic = keySet[0] + Math.floor(target / 12) * 12;
           await audioService.playTonicThenTarget(tonic, target, 0.5, 0.3, 0.35, homeNoteFreq);
         } else {
@@ -160,7 +164,8 @@ function App() {
           origin: { y: 0.6 }
         });
         // LUMI rainbow celebration with current key and range
-        const keySet = parseKey(currentSettings.key);
+        const keySignature = `${currentSettings.rootKey}-${currentSettings.scale}`;
+        const keySet = parseKey(keySignature);
         const [low, high] = rangeToMidi(currentSettings.range);
         lumiService.sendRainbowCelebration(keySet, low, high);
       },
@@ -207,7 +212,8 @@ function App() {
     if (gameService.getState().state === 'idle') {
       // Auto-start game and set key based on first note played
       const detectedKey = midiNoteToKeySignature(midiNote);
-      updateSettings({ key: detectedKey });
+      const [rootKey, scale] = detectedKey.split('-');
+      updateSettings({ rootKey, scale });
       startGame();
       return;
     }
@@ -323,19 +329,20 @@ function App() {
       audioService.setMasterVolume(newSettings.volume);
     }
     
-    // Update LUMI hardware key and scale setting when key changes
-    if (newSettings.key !== undefined) {
-      const [rootNote, scaleType] = newSettings.key.split('-');
-      console.log(`🎼 Updating LUMI: ${rootNote} ${scaleType}`);
+    // Update LUMI hardware when rootKey or scale changes
+    if (newSettings.rootKey !== undefined || newSettings.scale !== undefined) {
+      const rootKey = newSettings.rootKey || updatedSettings.rootKey;
+      const scale = newSettings.scale || updatedSettings.scale;
+      const keySignature = `${rootKey}-${scale}`;
       
-      // Set both root key and scale on LUMI hardware
-      lumiService.setRootKey(newSettings.key);
-      lumiService.setScale(scaleType);
-    }
-    
-    // Update scale highlighting if key changed
-    if (newSettings.key) {
-      updateScaleHighlighting(newSettings.key);
+      console.log(`🎼 Updating LUMI: ${rootKey} ${scale}`);
+      
+      // Set both root key and scale on LUMI hardware  
+      lumiService.setRootKey(keySignature);
+      lumiService.setScale(scale);
+      
+      // Update scale highlighting
+      updateScaleHighlighting(keySignature);
     }
     
     // Update game target if changed
@@ -347,7 +354,7 @@ function App() {
     setupGameCallbacks(updatedSettings);
   };
 
-  const updateScaleHighlighting = (key = appState.settings.key) => {
+  const updateScaleHighlighting = (key = `${appState.settings.rootKey}-${appState.settings.scale}`) => {
     const keySet = parseKey(key);
     const homeNote = keySet[0]; // First note in the key set is the root/home note
     setAppState(prev => ({
@@ -401,7 +408,7 @@ function App() {
     updateGameData();
     
     // Update LUMI scale highlighting for the current game
-    updateScaleHighlighting(appState.settings.key);
+    updateScaleHighlighting(`${appState.settings.rootKey}-${appState.settings.scale}`);
   };
 
   const pauseGame = () => {
