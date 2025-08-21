@@ -551,7 +551,7 @@ function App() {
 
   const checkLevelProgression = (sessionData) => {
     const currentLevel = appState.settings.currentLevel;
-    if (currentLevel >= 7) return; // Already at max level
+    if (currentLevel >= 26) return; // Already at max level
     
     // Get recent performance for current level
     const recentSessions = analyticsService.getRecentSessions(10);
@@ -571,25 +571,38 @@ function App() {
     
     // Check if can advance
     if (levelService.canAdvanceLevel(currentLevel, recentPerformance)) {
-      // Show unlock notification after a brief delay
-      setTimeout(() => {
-        const nextLevel = currentLevel + 1;
-        const nextLevelInfo = levelService.getLevelInfo(nextLevel);
-        
-        // Show prominent unlock notification
-        setLevelUnlockNotification({
-          level: nextLevel,
-          name: nextLevelInfo.name,
-          description: nextLevelInfo.description
-        });
-        
-        // Auto-advance to next level
-        const newLevel = levelService.advanceLevel();
-        updateSettings({ currentLevel: newLevel });
-        
-        // Clear notification after 5 seconds
-        setTimeout(() => setLevelUnlockNotification(null), 5000);
-      }, 2000); // Show after confetti
+      const nextLevel = currentLevel + 1;
+      const savedLevel = levelService.getCurrentLevel();
+      
+      // Only show notification if this is actually a new level unlock
+      if (nextLevel > savedLevel) {
+        // Show unlock notification after a brief delay
+        setTimeout(() => {
+          const nextLevelInfo = levelService.getLevelInfo(nextLevel);
+          
+          // Show prominent unlock notification
+          setLevelUnlockNotification({
+            level: nextLevel,
+            name: nextLevelInfo.name,
+            description: nextLevelInfo.description
+          });
+          
+          // Auto-advance to next level
+          const newLevel = levelService.advanceLevel();
+          const newLevelKey = levelService.getLevelKey(newLevel);
+          
+          // Update settings with new level and key if needed
+          const settingsUpdate = { currentLevel: newLevel };
+          if (newLevelKey !== appState.settings.rootKey && newLevelKey !== "any") {
+            settingsUpdate.rootKey = newLevelKey;
+            settingsUpdate.scale = "major"; // Ensure major scale for key transitions
+          }
+          updateSettings(settingsUpdate);
+          
+          // Clear notification after 5 seconds
+          setTimeout(() => setLevelUnlockNotification(null), 5000);
+        }, 2000); // Show after confetti
+      }
     }
   };
 

@@ -5,6 +5,7 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
     const [settingsVisible, setSettingsVisible] = useState(false);
     const [inputDropdownVisible, setInputDropdownVisible] = useState(false);
     const [outputDropdownVisible, setOutputDropdownVisible] = useState(false);
+    const [lockClickCount, setLockClickCount] = useState(0);
 
     const toggleSettings = () => {
         const newVisibility = !settingsVisible;
@@ -35,15 +36,16 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
 
     const handleTrainingModeChange = (isTrainingMode) => {
         if (isTrainingMode) {
-            // Entering training mode - reset to level 1, C major
+            // Entering training mode - preserve current level, set appropriate key
+            const currentLevel = settings.currentLevel;
+            const levelKey = TRAINING_LEVELS[currentLevel]?.key || 'C';
             onSettingsChange({ 
-                trainingMode: true, 
-                currentLevel: 1,
-                rootKey: 'C',
+                trainingMode: true,
+                rootKey: levelKey,
                 scale: 'major'
             });
         } else {
-            // Exiting training mode
+            // Exiting training mode - preserve level progress
             onSettingsChange({ trainingMode: false });
         }
     };
@@ -88,9 +90,47 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
         return `${midiDevices.selectedOutputs.length} devices selected`;
     };
 
+    const handleSecretUnlock = () => {
+        const newCount = lockClickCount + 1;
+        setLockClickCount(newCount);
+        
+        if (newCount >= 5) {
+            // Secret unlock! Advance to next level
+            const nextLevel = settings.currentLevel + 1;
+            if (nextLevel <= 26) {
+                const nextLevelInfo = TRAINING_LEVELS[nextLevel];
+                const levelKey = nextLevelInfo?.key || 'C';
+                
+                // Update to next level and appropriate key
+                const settingsUpdate = { currentLevel: nextLevel };
+                if (levelKey !== settings.rootKey && levelKey !== "any") {
+                    settingsUpdate.rootKey = levelKey;
+                    settingsUpdate.scale = "major";
+                }
+                onSettingsChange(settingsUpdate);
+                
+                // Reset click count
+                setLockClickCount(0);
+                
+                // Show feedback
+                alert(`🔓 Secret unlock! Advanced to Level ${nextLevel}: ${nextLevelInfo.name}`);
+            }
+        }
+        
+        // Reset click count after 3 seconds of no clicks
+        setTimeout(() => setLockClickCount(0), 3000);
+    };
+
     return (
         <header>
-            <div className="title">Ear Trainer — v1.1</div>
+            <div className="title">
+                Ear Trainer — v1.1
+                {settings.trainingMode && (
+                    <span className="level-badge">
+                        Level {settings.currentLevel}: {getLevelName(settings.currentLevel)}
+                    </span>
+                )}
+            </div>
             <div className="settings-section">
                 <button className="settings-toggle" onClick={toggleSettings}>
                     <span className="settings-toggle-text">Settings</span>
@@ -121,14 +161,21 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
                                         <div className="level-description">
                                             {getLevelDescription(settings.currentLevel)}
                                         </div>
-                                        {settings.currentLevel < 7 && (
+                                        {settings.currentLevel < 26 && (
                                             <div className="next-level-preview">
-                                                🔒 Level {settings.currentLevel + 1}: {getLevelName(settings.currentLevel + 1)}
+                                                <span 
+                                                    className={`secret-lock ${lockClickCount > 0 ? 'clicked' : ''}`}
+                                                    onClick={handleSecretUnlock}
+                                                    title={lockClickCount > 0 ? `${5 - lockClickCount} more clicks to unlock` : ''}
+                                                >
+                                                    🔒
+                                                </span>
+                                                {' '}Level {settings.currentLevel + 1}: {getLevelName(settings.currentLevel + 1)}
                                             </div>
                                         )}
-                                        {settings.currentLevel === 7 && (
+                                        {settings.currentLevel === 26 && (
                                             <div className="max-level-achieved">
-                                                🏆 Maximum level achieved!
+                                                🏆 Grand Master achieved!
                                             </div>
                                         )}
                                     </div>
