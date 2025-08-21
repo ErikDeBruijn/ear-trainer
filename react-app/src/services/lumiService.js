@@ -64,7 +64,7 @@ function lumiChecksum(cmd8) {
   return c & 0x7F;
 }
 
-function buildFrameFromCmd8(cmd8, deviceId = 0x00) {
+function buildFrameFromCmd8(cmd8, deviceId = 0x37) {
   const sum = lumiChecksum(cmd8);
   const body = [0x77, deviceId & 0x7F, ...cmd8, sum];
   return [...MFR, ...body, END];
@@ -90,12 +90,30 @@ function cmdBrightness(level) {
   return b.slice();
 }
 
-function buildPrimaryRGB(r, g, b, deviceId = 0x00) {
+function buildPrimaryRGB(r, g, b, deviceId = 0x37) {
   return buildFrameFromCmd8(cmdPrimaryRGB(r, g, b), deviceId);
 }
 
-function buildBrightness(level, deviceId = 0x00) {
+function buildBrightness(level, deviceId = 0x37) {
   return buildFrameFromCmd8(cmdBrightness(level), deviceId);
+}
+
+// Mode commands based on SysEx documentation
+const MODE_COMMANDS = {
+  'rainbow': [0x10, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00], // rainbow mode
+  'single': [0x10, 0x40, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00],  // single color scale
+  'piano': [0x10, 0x40, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00],   // piano mode
+  'night': [0x10, 0x40, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00]    // night mode
+};
+
+function cmdMode(mode) {
+  const cmd = MODE_COMMANDS[String(mode).toLowerCase()];
+  if (!cmd) throw new Error(`Unknown mode: ${mode}`);
+  return cmd.slice();
+}
+
+function buildMode(mode, deviceId = 0x37) {
+  return buildFrameFromCmd8(cmdMode(mode), deviceId);
 }
 
 class LumiService {
@@ -206,6 +224,18 @@ class LumiService {
     this.setBrightness('100');
   }
 
+  setMode(mode) {
+    if (!this.midiOut || !this.isLumi) return;
+
+    try {
+      const frame = buildMode(mode);
+      this.midiOut.send(frame);
+      console.log(`🔧 LUMI mode set to: ${mode}`);
+    } catch (e) {
+      console.warn("Failed to set LUMI mode:", e);
+    }
+  }
+
   clearRange(low, highExclusive) {
     if (!this.midiOut) return;
     try {
@@ -215,6 +245,70 @@ class LumiService {
     } catch (e) {
       console.warn("Failed to clear range:", e);
     }
+  }
+
+  sendRainbowCelebration() {
+    if (!this.midiOut || !this.isLumi) return;
+    
+    console.log('🌈 Starting rainbow celebration on LUMI');
+    
+    // Brighter, more vibrant rainbow colors
+    const rainbowColors = [
+      [255, 0, 0],      // Red
+      [255, 165, 0],    // Orange  
+      [255, 255, 0],    // Yellow
+      [0, 255, 0],      // Green
+      [0, 100, 255],    // Blue
+      [138, 43, 226],   // Violet
+      [255, 20, 147]    // Deep Pink
+    ];
+    
+    let colorIndex = 0;
+    const totalFlashes = rainbowColors.length * 2; // 2 complete cycles
+    
+    console.log(`🌈 Will flash ${totalFlashes} colors (${rainbowColors.length} colors × 2 cycles)`);
+    
+    // Flash through rainbow colors immediately, then continue with interval
+    const flashColor = () => {
+      if (colorIndex >= totalFlashes) {
+        console.log('🌈 All colors flashed, finishing celebration');
+        // Return to normal bright blue after celebration
+        setTimeout(() => {
+          console.log('🌈 Returning to bright blue');
+          this.sendPrimaryColor(0, 1, 255); // Bright blue
+          console.log('🌈 Rainbow celebration finished, back to normal mode');
+        }, 300);
+        return;
+      }
+      
+      const [r, g, b] = rainbowColors[colorIndex % rainbowColors.length];
+      console.log(`🌈 Flash ${colorIndex + 1}/${totalFlashes}: RGB(${r}, ${g}, ${b})`);
+      
+      try {
+        // Use primary color for dramatic effect across whole keyboard
+        this.sendPrimaryColor(r, g, b);
+        console.log(`✅ Color sent successfully`);
+      } catch (e) {
+        console.warn("❌ Failed to send rainbow color:", e);
+      }
+      
+      colorIndex++;
+      
+      // Schedule next color
+      if (colorIndex < totalFlashes) {
+        setTimeout(flashColor, 600); // 600ms between colors
+      } else {
+        // All done, finish
+        setTimeout(() => {
+          console.log('🌈 Returning to bright blue');
+          this.sendPrimaryColor(0, 1, 255);
+          console.log('🌈 Rainbow celebration finished, back to normal mode');
+        }, 300);
+      }
+    };
+    
+    // Start the color sequence
+    flashColor();
   }
 }
 

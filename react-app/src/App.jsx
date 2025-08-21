@@ -144,11 +144,14 @@ function App() {
       },
       onEnd: (summary) => {
         setStatus(`Session complete! Final score: ${summary.score}`);
+        // Confetti celebration
         confetti({
           particleCount: 100,
           spread: 70,
           origin: { y: 0.6 }
         });
+        // LUMI rainbow celebration
+        lumiService.sendRainbowCelebration();
       },
       onStateChange: (newState) => {
         setAppState(prev => ({ ...prev, gameState: newState }));
