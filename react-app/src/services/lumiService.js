@@ -277,14 +277,8 @@ class LumiService {
     
     const flashColor = () => {
       if (colorIndex >= totalFlashes) {
-        // End with appropriate color based on game state
-        if (isGameActive) {
-          // Game is active - return to scale highlighting
-          this.setScaleColors(keySet, low, highExclusive);
-        } else {
-          // Game is idle - turn off lights (black)
-          this.sendPrimaryColor(0, 0, 0);
-        }
+        // Always end with bright blue after rainbow
+        this.sendPrimaryColor(0, 1, 255); // Bright blue
         return;
       }
       
@@ -337,7 +331,9 @@ class LumiService {
     const keySet = [0, 2, 4, 5, 7, 9, 11]; // C major
     const low = 48; // C3
     const high = 72; // C5
-    this.sendRainbowCelebration(keySet, low, high, false); // Test as if game is idle
+    // Check if we should end with scale colors (if there's likely a game running)
+    const shouldEndWithScale = true; // For testing, assume we want to see scale colors
+    this.sendRainbowCelebration(keySet, low, high, shouldEndWithScale);
   }
 
   // Test individual color setting

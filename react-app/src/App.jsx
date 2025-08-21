@@ -314,7 +314,8 @@ function App() {
         setTimeout(() => {
           const keySet = parseKey(appState.settings.key);
           const [low, high] = rangeToMidi(appState.settings.range);
-          lumiService.sendRainbowCelebration(keySet, low, high, false);
+          const isGameActive = appState.gameState !== 'idle';
+          lumiService.sendRainbowCelebration(keySet, low, high, isGameActive);
         }, 500);
       }
     }
@@ -356,6 +357,10 @@ function App() {
       ...prev,
       scaleNotes: new Set(keySet)
     }));
+    
+    // Also update LUMI keyboard lighting
+    const [low, high] = rangeToMidi(appState.settings.range);
+    lumiService.setScaleColors(keySet, low, high);
   };
 
   const updateGameData = () => {
@@ -390,6 +395,9 @@ function App() {
   const startGame = () => {
     gameService.start();
     updateGameData();
+    
+    // Update LUMI scale highlighting for the current game
+    updateScaleHighlighting(appState.settings.key);
   };
 
   const pauseGame = () => {
