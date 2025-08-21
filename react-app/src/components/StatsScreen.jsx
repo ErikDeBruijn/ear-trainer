@@ -53,6 +53,25 @@ function StatsScreen({ onClose }) {
         return '#ef4444'; // red
     };
     
+    const getRelativeAccuracyColor = (accuracy, allAccuracies) => {
+        if (allAccuracies.length <= 1) {
+            // If only one data point, use encouraging colors
+            if (accuracy >= 70) return '#22c55e'; // green
+            if (accuracy >= 50) return '#eab308'; // yellow
+            return '#f97316'; // orange (not red for encouragement)
+        }
+        
+        // Sort accuracies to find percentiles
+        const sorted = [...allAccuracies].sort((a, b) => a - b);
+        const percentile = (sorted.indexOf(accuracy) + 1) / sorted.length;
+        
+        // Relative coloring based on performance rank
+        if (percentile >= 0.8) return '#22c55e'; // green - top 20%
+        if (percentile >= 0.6) return '#eab308'; // yellow - top 40%
+        if (percentile >= 0.4) return '#f97316'; // orange - middle 40%
+        return '#ef4444'; // red - bottom 40%
+    };
+    
     const clearAllData = () => {
         if (confirm('Are you sure you want to clear all practice data? This cannot be undone.')) {
             analyticsService.clearAllData();
@@ -130,24 +149,31 @@ function StatsScreen({ onClose }) {
                     {weakSpots.length > 0 && (
                         <div className="stats-section">
                             <h2>🎯 Areas to Focus On</h2>
+                            <p className="section-subtitle">
+                                Notes ranked by relative performance • Green = your strongest notes
+                            </p>
                             <div className="weak-spots">
-                                {weakSpots.slice(0, 6).map((spot, index) => (
-                                    <div key={spot.noteClass} className="weak-spot">
-                                        <div className="note-name">{spot.noteName}</div>
-                                        <div className="accuracy-bar">
-                                            <div 
-                                                className="accuracy-fill"
-                                                style={{ 
-                                                    width: `${spot.accuracy}%`,
-                                                    backgroundColor: getAccuracyColor(spot.accuracy)
-                                                }}
-                                            ></div>
+                                {weakSpots.slice(0, 6).map((spot, index) => {
+                                    const allAccuracies = weakSpots.map(s => s.accuracy);
+                                    return (
+                                        <div key={spot.noteClass} className="weak-spot">
+                                            <div className="note-name">{spot.noteName}</div>
+                                            <div className="accuracy-bar">
+                                                <div 
+                                                    className="accuracy-fill"
+                                                    style={{ 
+                                                        width: `${spot.accuracy}%`,
+                                                        backgroundColor: getRelativeAccuracyColor(spot.accuracy, allAccuracies)
+                                                    }}
+                                                ></div>
+                                            </div>
+                                            <div className="accuracy-text">
+                                                {spot.accuracy}% ({spot.correct}/{spot.attempts})
+                                                {index < 2 && <span className="focus-hint"> • Focus here!</span>}
+                                            </div>
                                         </div>
-                                        <div className="accuracy-text">
-                                            {spot.accuracy}% ({spot.correct}/{spot.attempts})
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}

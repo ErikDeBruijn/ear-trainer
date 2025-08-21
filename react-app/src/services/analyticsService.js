@@ -82,10 +82,15 @@ class AnalyticsService {
     if (!this.currentSession) return null;
 
     this.currentSession.endTime = Date.now();
+    // Calculate accurate stats from both finalGameState and logged attempts
+    const totalAttempts = finalGameState.attempts || this.currentSession.attempts.length;
+    const correctAnswers = finalGameState.correct || this.currentSession.attempts.filter(a => a.isCorrect).length;
+    const calculatedAccuracy = totalAttempts > 0 ? Math.round((correctAnswers / totalAttempts) * 100) : 0;
+    
     this.currentSession.summary = {
-      totalNotes: finalGameState.attempts || this.currentSession.attempts.length,
-      correctNotes: finalGameState.correct || this.currentSession.attempts.filter(a => a.isCorrect).length,
-      accuracy: finalGameState.attempts > 0 ? Math.round((finalGameState.correct / finalGameState.attempts) * 100) : 0,
+      totalNotes: totalAttempts,
+      correctNotes: correctAnswers,
+      accuracy: calculatedAccuracy,
       streak: finalGameState.streak || 0,
       maxStreak: this.currentSession.summary.maxStreak,
       duration: this.currentSession.endTime - this.currentSession.startTime,

@@ -67,7 +67,8 @@ function App() {
     if (import.meta.env.DEV) {
       window.lumiService = lumiService;
       window.analyticsService = analyticsService;
-      console.log('🔧 Exposed lumiService and analyticsService to window for testing');
+      window.gameService = gameService;
+      console.log('🔧 Exposed lumiService, analyticsService, and gameService to window for testing');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -446,6 +447,15 @@ function App() {
 
   const pauseGame = () => {
     gameService.pause();
+    
+    // End analytics session when manually pausing
+    const currentGameState = gameService.getState();
+    if (analyticsService.currentSession && currentGameState) {
+      const sessionData = analyticsService.endSession(currentGameState);
+      if (sessionData) {
+        console.log(`📊 Session paused and saved: ${sessionData.summary.accuracy}% accuracy`);
+      }
+    }
   };
 
   const replayNotes = async () => {
