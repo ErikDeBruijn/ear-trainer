@@ -93,7 +93,9 @@ function saveSettings() {
         audibleResponse: document.getElementById("audible-response").value,
         homeNoteFrequency: document.getElementById("home-note-frequency").value,
         practiceTarget: document.getElementById("practice-target").value,
-        volume: document.getElementById("volume-slider").value
+        volume: document.getElementById("volume-slider").value,
+        midiInDevice: document.getElementById("midi-in").value,
+        midiOutDevice: document.getElementById("midi-out").value
     };
     store.save(newSettings);
 }
@@ -173,7 +175,7 @@ const game = new Game({
     onTick: (timeString) => {
         ui.updateHUD({ timer: timeString });
         // Encourage user to practice for at least 10 minutes
-        const practiceSeconds = game.practiceTime;
+        const practiceSeconds = store.getDailyPracticeTime();
         if (practiceSeconds === 600) { // 10 minutes
             ui.flash(null, true);
             ui.updateStatus("Great! You've been practicing for 10 minutes! 🎉");
@@ -187,7 +189,7 @@ const game = new Game({
         ui.showConfetti();
 
         // Provide encouragement feedback based on practice time
-        const practiceMinutes = Math.floor(game.practiceTime / 60);
+        const practiceMinutes = Math.floor(store.getDailyPracticeTime() / 60);
         let encouragementMessage = "Practice session complete! ";
         if (practiceMinutes >= 10) {
             encouragementMessage += "Excellent work - you practiced for " + practiceMinutes + " minutes! 🌟";
@@ -332,15 +334,142 @@ async function boot() {
     // Screen keyboard input
     ui.onScreenKey((m)=>handleAnswer(m), (m)=>handleNoteOff(m));
 
-    // MIDI setup
-    try {
-        const { inputs, outputs } = await midi.enable();
-        const inSel = document.getElementById("midi-in");
-        const outSel = document.getElementById("midi-out");
-        inputs.forEach(p => inSel.append(new Option(p.name, p.id)));
-        outputs.forEach(p => outSel.append(new Option(p.name, p.id)));
-        inSel.addEventListener("change", (e) => {
-            midi.setInById(e.target.value);
+    // Helper function to create device type icons
+    function createDeviceTypeIcon(deviceType) {
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', `device-type-icon ${deviceType}`);
+        icon.setAttribute('viewBox', '0 0 24 24');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        
+        switch (deviceType) {
+            case 'melodic':
+                // Piano keys icon
+                path.setAttribute('d', 'M5 3v18h2V3H5zm4 0v18h2V3H9zm4 0v18h2V3h-2zm4 0v18h2V3h-2z M6 3h1v10H6V3zm4 0h1v10h-1V3zm4 0h1v10h-1V3z');
+                icon.setAttribute('title', 'Melodic instrument (suitable for ear training)');
+                break;
+            case 'drum':
+                // Drum icon
+                path.setAttribute('d', 'M12 3C8.13 3 5 6.13 5 10v6c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-6c0-3.87-3.13-7-7-7zm5 13H7v-6c0-2.76 2.24-5 5-5s5 2.24 5 5v6zm-5-9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z');
+                icon.setAttribute('title', 'Drum/percussion device');
+                break;
+            case 'controller':
+                // Controller/mixer icon
+                path.setAttribute('d', 'M3 17h18v2H3zm0-4h18v2H3zm0-4h18v2H3zm0-4h18v2H3z M21 7h-4v4h4V7zm-6 0h-4v4h4V7zm-6 0H5v4h4V7z');
+                icon.setAttribute('title', 'MIDI controller');
+                break;
+            default:
+                return null;
+        }
+        
+        icon.appendChild(path);
+        return icon;
+    }
+
+    // Helper function to update MIDI device interface
+    function updateMidiInterface(changedPort, changeType) {
+        updateMidiInputs(changedPort, changeType);
+        updateMidiOutputs(changedPort, changeType);
+    }
+
+    function updateMidiInputs(changedPort, changeType) {
+        const inputList = document.getElementById("midi-input-list");
+        const savedSettings = store.load();
+        let selectedInputs = savedSettings.midiInputDevices || [];
+        
+        // Handle device changes
+        if (changedPort && changeType) {
+            if (changeType === 'connected' && changedPort.type === 'input') {
+                // Only auto-select newly connected melodic devices
+                const deviceType = midi.detectDeviceType(changedPort);
+                if (deviceType === 'melodic' && !selectedInputs.includes(changedPort.id)) {
+                    selectedInputs.push(changedPort.id);
+                    console.log(`Auto-selected new melodic input device: ${changedPort.name} (${deviceType})`);
+                } else if (deviceType !== 'melodic') {
+                    console.log(`Skipped auto-selection of non-melodic device: ${changedPort.name} (${deviceType})`);
+                }
+            } else if (changeType === 'disconnected') {
+                // Remove disconnected devices from selection
+                selectedInputs = selectedInputs.filter(id => id !== changedPort.id);
+                console.log(`Removed disconnected device: ${changedPort.name}`);
+            }
+            
+            // Save updated selections
+            const currentSettings = store.load();
+            store.save({
+                ...currentSettings,
+                midiInputDevices: selectedInputs
+            });
+        }
+        
+        // Clear existing checkboxes
+        inputList.innerHTML = '';
+        
+        // Add checkboxes for each input device
+        midi.inputs.forEach(device => {
+            const deviceType = midi.detectDeviceType(device);
+            const isMelodic = deviceType === 'melodic';
+            
+            const item = document.createElement('div');
+            item.className = `midi-input-item${!isMelodic ? ' non-melodic' : ''}`;
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `midi-input-${device.id}`;
+            checkbox.value = device.id;
+            checkbox.checked = selectedInputs.includes(device.id);
+            
+            const label = document.createElement('label');
+            label.htmlFor = checkbox.id;
+            
+            // Create device label with icon if it's a Bluetooth device
+            if (device.name.toLowerCase().includes('bluetooth')) {
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                icon.setAttribute('class', 'bluetooth-icon');
+                icon.setAttribute('viewBox', '0 0 24 24');
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M13.42 8.58L15 10.17V11L13.41 12.59L12 11.17L10.59 12.59L9 11V10.17L10.58 8.58L9 7V6.17L10.59 4.59L12 6.01L13.41 4.59L15 6.17V7L13.42 8.58ZM12 4.83L11.41 5.41L12 6.01V4.83ZM12 12.01L11.41 11.41L12 10.83V12.01ZM17.71 7.71L12 2H11V9L5.71 3.71L4.29 5.29L10 11L4.29 16.71L5.71 18.29L11 13V20H12L17.71 14.29L13.41 10L17.71 7.71Z');
+                
+                icon.appendChild(path);
+                label.appendChild(icon);
+                
+                // Clean device name (remove "Bluetooth" text)
+                const cleanName = device.name.replace(/bluetooth/gi, '').trim();
+                const textNode = document.createTextNode(cleanName);
+                label.appendChild(textNode);
+            } else {
+                label.textContent = device.name;
+            }
+
+            // Add device type icon
+            const typeIcon = createDeviceTypeIcon(deviceType);
+            if (typeIcon) {
+                label.appendChild(typeIcon);
+            }
+            
+            item.appendChild(checkbox);
+            item.appendChild(label);
+            inputList.appendChild(item);
+            
+            checkbox.addEventListener('change', handleMidiInputChange);
+        });
+        
+        // Update active inputs and summary
+        if (selectedInputs.length > 0) {
+            const validInputs = selectedInputs.filter(id => 
+                midi.inputs.find(p => p.id === id)
+            );
+            if (validInputs.length !== selectedInputs.length) {
+                // Some devices were disconnected, update saved settings
+                const currentSettings = store.load();
+                store.save({
+                    ...currentSettings,
+                    midiInputDevices: validInputs
+                });
+            }
+            
+            midi.setActiveInputs(validInputs);
             midi.onNote(ev => { 
                 if (ev.type === "on") {
                     handleAnswer(ev.note);
@@ -348,30 +477,310 @@ async function boot() {
                     handleNoteOff(ev.note);
                 }
             });
-        });
-        outSel.addEventListener("change", (e) => {
-          midi.setOutById(e.target.value);
-          bindMidiOut(midi.out);
-          if (midi.out) {
-            clearRange(range[0], range[1]);
-            setScaleColors(keySet, range[0], range[1]);
-            setRootKey(document.getElementById("key-select").value);
-          }
-        });
-        // auto-select first ports if present
-        if (inputs[0]) { 
-            inSel.value = inputs[0].id; 
-            inSel.dispatchEvent(new Event("change")); 
         }
-        if (outputs[0]) {
-          outSel.value = outputs[0].id;
-          outSel.dispatchEvent(new Event("change"));
-          bindMidiOut(midi.out);
-          if (midi.out) {
+        
+        updateMidiInputSummary();
+    }
+
+    function updateMidiOutputs(changedPort, changeType) {
+        const outputList = document.getElementById("midi-output-list");
+        const savedSettings = store.load();
+        let selectedOutputs = savedSettings.midiOutputDevices || [];
+        
+        // Handle device changes
+        if (changedPort && changeType) {
+            if (changeType === 'connected' && changedPort.type === 'output') {
+                // Auto-select LUMI devices for output
+                if (midi.isLumiDevice(changedPort) && !selectedOutputs.includes(changedPort.id)) {
+                    selectedOutputs.push(changedPort.id);
+                    console.log(`Auto-selected LUMI output device: ${changedPort.name}`);
+                }
+            } else if (changeType === 'disconnected') {
+                // Remove disconnected devices from selection
+                selectedOutputs = selectedOutputs.filter(id => id !== changedPort.id);
+                console.log(`Removed disconnected output device: ${changedPort.name}`);
+            }
+            
+            // Save updated selections
+            const currentSettings = store.load();
+            store.save({
+                ...currentSettings,
+                midiOutputDevices: selectedOutputs
+            });
+        }
+        
+        // Clear existing checkboxes
+        outputList.innerHTML = '';
+        
+        // Add checkboxes for each output device
+        midi.outputs.forEach(device => {
+            const item = document.createElement('div');
+            item.className = 'midi-output-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `midi-output-${device.id}`;
+            checkbox.value = device.id;
+            checkbox.checked = selectedOutputs.includes(device.id);
+            
+            const label = document.createElement('label');
+            label.htmlFor = checkbox.id;
+            
+            // Create device label with icon if it's a Bluetooth device
+            if (device.name.toLowerCase().includes('bluetooth')) {
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                icon.setAttribute('class', 'bluetooth-icon');
+                icon.setAttribute('viewBox', '0 0 24 24');
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M13.42 8.58L15 10.17V11L13.41 12.59L12 11.17L10.59 12.59L9 11V10.17L10.58 8.58L9 7V6.17L10.59 4.59L12 6.01L13.41 4.59L15 6.17V7L13.42 8.58ZM12 4.83L11.41 5.41L12 6.01V4.83ZM12 12.01L11.41 11.41L12 10.83V12.01ZM17.71 7.71L12 2H11V9L5.71 3.71L4.29 5.29L10 11L4.29 16.71L5.71 18.29L11 13V20H12L17.71 14.29L13.41 10L17.71 7.71Z');
+                
+                icon.appendChild(path);
+                label.appendChild(icon);
+                
+                // Clean device name (remove "Bluetooth" text)
+                const cleanName = device.name.replace(/bluetooth/gi, '').trim();
+                const textNode = document.createTextNode(cleanName);
+                label.appendChild(textNode);
+            } else {
+                label.textContent = device.name;
+            }
+
+            // Add device type icon for LUMI devices
+            if (midi.isLumiDevice(device)) {
+                const lumiIcon = createDeviceTypeIcon('melodic');
+                if (lumiIcon) {
+                    lumiIcon.setAttribute('title', 'LUMI lighting device');
+                    label.appendChild(lumiIcon);
+                }
+            }
+            
+            item.appendChild(checkbox);
+            item.appendChild(label);
+            outputList.appendChild(item);
+            
+            checkbox.addEventListener('change', handleMidiOutputChange);
+        });
+        
+        // Update active outputs and summary
+        if (selectedOutputs.length > 0) {
+            const validOutputs = selectedOutputs.filter(id => 
+                midi.outputs.find(p => p.id === id)
+            );
+            if (validOutputs.length !== selectedOutputs.length) {
+                // Some devices were disconnected, update saved settings
+                const currentSettings = store.load();
+                store.save({
+                    ...currentSettings,
+                    midiOutputDevices: validOutputs
+                });
+            }
+            
+            midi.setActiveOutputs(validOutputs);
+            if (midi.out) {
+                bindMidiOut(midi.out);
+                clearRange(range[0], range[1]);
+                setScaleColors(keySet, range[0], range[1]);
+                setRootKey(document.getElementById("key-select").value);
+            }
+        }
+        
+        updateMidiOutputSummary();
+    }
+
+    function handleMidiOutputChange() {
+        const checkboxes = document.querySelectorAll('#midi-output-list input[type="checkbox"]');
+        const selectedOutputs = Array.from(checkboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+        
+        // Update MIDI system
+        midi.setActiveOutputs(selectedOutputs);
+        
+        // Update lighting and scale colors
+        if (midi.out) {
+            bindMidiOut(midi.out);
             clearRange(range[0], range[1]);
             setScaleColors(keySet, range[0], range[1]);
             setRootKey(document.getElementById("key-select").value);
-          }
+        }
+        
+        // Save settings
+        const currentSettings = store.load();
+        store.save({
+            ...currentSettings,
+            midiOutputDevices: selectedOutputs
+        });
+        
+        updateMidiOutputSummary();
+    }
+
+    function updateMidiOutputSummary() {
+        const checkboxes = document.querySelectorAll('#midi-output-list input[type="checkbox"]:checked');
+        const summary = document.getElementById("midi-output-summary");
+        
+        if (checkboxes.length === 0) {
+            summary.textContent = "No devices selected";
+        } else if (checkboxes.length === 1) {
+            const deviceName = checkboxes[0].nextElementSibling.textContent;
+            summary.textContent = deviceName;
+        } else {
+            summary.textContent = `${checkboxes.length} devices selected`;
+        }
+    }
+
+    function handleMidiInputChange() {
+        const checkboxes = document.querySelectorAll('#midi-input-list input[type="checkbox"]');
+        const selectedInputs = Array.from(checkboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+        
+        // Update MIDI system
+        midi.setActiveInputs(selectedInputs);
+        midi.onNote(ev => { 
+            if (ev.type === "on") {
+                handleAnswer(ev.note);
+            } else if (ev.type === "off") {
+                handleNoteOff(ev.note);
+            }
+        });
+        
+        // Save settings
+        const currentSettings = store.load();
+        store.save({
+            ...currentSettings,
+            midiInputDevices: selectedInputs
+        });
+        
+        updateMidiInputSummary();
+    }
+
+    function updateMidiInputSummary() {
+        const checkboxes = document.querySelectorAll('#midi-input-list input[type="checkbox"]:checked');
+        const summary = document.getElementById("midi-input-summary");
+        
+        if (checkboxes.length === 0) {
+            summary.textContent = "No devices selected";
+        } else if (checkboxes.length === 1) {
+            const deviceName = checkboxes[0].nextElementSibling.textContent;
+            summary.textContent = deviceName;
+        } else {
+            summary.textContent = `${checkboxes.length} devices selected`;
+        }
+    }
+
+    // Set up MIDI input dropdown toggle
+    const midiInputHeader = document.getElementById("midi-input-header");
+    const midiInputDropdown = document.getElementById("midi-input-dropdown");
+    
+    midiInputHeader.addEventListener("click", () => {
+        const isExpanded = midiInputDropdown.classList.contains("show");
+        if (isExpanded) {
+            midiInputDropdown.classList.remove("show");
+            midiInputHeader.classList.remove("expanded");
+        } else {
+            // Position the dropdown relative to the header
+            const headerRect = midiInputHeader.getBoundingClientRect();
+            midiInputDropdown.style.top = `${headerRect.bottom + window.scrollY}px`;
+            midiInputDropdown.style.left = `${headerRect.left + window.scrollX}px`;
+            midiInputDropdown.style.width = `${headerRect.width}px`;
+            
+            midiInputDropdown.classList.add("show");
+            midiInputHeader.classList.add("expanded");
+        }
+    });
+
+    // Set up MIDI output dropdown toggle
+    const midiOutputHeader = document.getElementById("midi-output-header");
+    const midiOutputDropdown = document.getElementById("midi-output-dropdown");
+    
+    midiOutputHeader.addEventListener("click", () => {
+        const isExpanded = midiOutputDropdown.classList.contains("show");
+        if (isExpanded) {
+            midiOutputDropdown.classList.remove("show");
+            midiOutputHeader.classList.remove("expanded");
+        } else {
+            // Position the dropdown relative to the header
+            const headerRect = midiOutputHeader.getBoundingClientRect();
+            midiOutputDropdown.style.top = `${headerRect.bottom + window.scrollY}px`;
+            midiOutputDropdown.style.left = `${headerRect.left + window.scrollX}px`;
+            midiOutputDropdown.style.width = `${headerRect.width}px`;
+            
+            midiOutputDropdown.classList.add("show");
+            midiOutputHeader.classList.add("expanded");
+        }
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".midi-input-selector")) {
+            midiInputDropdown.classList.remove("show");
+            midiInputHeader.classList.remove("expanded");
+        }
+        if (!e.target.closest(".midi-output-selector")) {
+            midiOutputDropdown.classList.remove("show");
+            midiOutputHeader.classList.remove("expanded");
+        }
+    });
+
+    // MIDI setup
+    try {
+        await midi.enable();
+        
+        // Initial population
+        updateMidiInterface();
+        
+        // Set up device change callback
+        midi.onDeviceChange = updateMidiInterface;
+
+        // Initialize input devices with saved selections
+        const savedSettings = store.load();
+        if (savedSettings.midiInputDevices && savedSettings.midiInputDevices.length > 0) {
+            const validInputs = savedSettings.midiInputDevices.filter(id => 
+                midi.inputs.find(p => p.id === id)
+            );
+            if (validInputs.length > 0) {
+                midi.setActiveInputs(validInputs);
+                midi.onNote(ev => { 
+                    if (ev.type === "on") {
+                        handleAnswer(ev.note);
+                    } else if (ev.type === "off") {
+                        handleNoteOff(ev.note);
+                    }
+                });
+            }
+        }
+
+        // Initialize output devices with saved selections (auto-select LUMI if not already saved)
+        let outputDevices = savedSettings.midiOutputDevices || [];
+        if (outputDevices.length === 0) {
+            // Auto-select LUMI devices if no saved selections
+            const lumiDevices = midi.outputs.filter(device => midi.isLumiDevice(device));
+            if (lumiDevices.length > 0) {
+                outputDevices = lumiDevices.map(device => device.id);
+                console.log(`Auto-selected LUMI devices for output: ${lumiDevices.map(d => d.name).join(', ')}`);
+                
+                // Save the auto-selection
+                store.save({
+                    ...savedSettings,
+                    midiOutputDevices: outputDevices
+                });
+            }
+        }
+        
+        if (outputDevices.length > 0) {
+            const validOutputs = outputDevices.filter(id => 
+                midi.outputs.find(p => p.id === id)
+            );
+            if (validOutputs.length > 0) {
+                midi.setActiveOutputs(validOutputs);
+                if (midi.out) {
+                    bindMidiOut(midi.out);
+                    clearRange(range[0], range[1]);
+                    setScaleColors(keySet, range[0], range[1]);
+                    setRootKey(document.getElementById("key-select").value);
+                }
+            }
         }
     } catch (e) {
         document.getElementById("status").textContent = `MIDI not available: ${e.message}`;
