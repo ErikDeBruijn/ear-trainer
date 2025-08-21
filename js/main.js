@@ -858,21 +858,10 @@ function handleAnswer(midiNote) {
       updateProgressBar(game.correct);
       // Check if practice target is reached
       if (game.correct >= practiceTarget) {
-        setTimeout(() => {
-            // Set flag to finish game when the correct key is released
-            game.waitingForKeyRelease = true;
-            game.waitingForNoteRelease = midiNote; // Track which specific note
-            game.pendingFinish = true;
-        }, RESULT_HOLD_MS);
+        setTimeout(() => game.finish(), RESULT_HOLD_MS);
       } else {
         // Only move to next round if the answer is correct and target not reached
-        // Wait for result feedback, then wait for key release before next round
-        setTimeout(() => {
-            // Set flag to proceed to next round when the correct key is released
-            game.waitingForKeyRelease = true;
-            game.waitingForNoteRelease = midiNote; // Track which specific note
-            game.pendingNextRound = true;
-        }, RESULT_HOLD_MS);
+        setTimeout(() => game.nextRound(), RESULT_HOLD_MS);
       }
     } else {
       setKeyColor(midiNote, "red");
@@ -893,21 +882,6 @@ function handleAnswer(midiNote) {
 function handleNoteOff(midiNote) {
     // Stop sustained audible feedback when note is released
     audio.stopSustainedNote(midiNote);
-    
-    // Check what action is pending after key release
-    // IMPORTANT: Only proceed if the specific correct note is released
-    if (game.waitingForKeyRelease && game.waitingForNoteRelease === midiNote) {
-        game.waitingForKeyRelease = false;
-        game.waitingForNoteRelease = null;
-        
-        if (game.pendingNextRound) {
-            game.pendingNextRound = false;
-            game.nextRound();
-        } else if (game.pendingFinish) {
-            game.pendingFinish = false;
-            game.finish();
-        }
-    }
 }
 
 boot();
