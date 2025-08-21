@@ -112,6 +112,10 @@ class MidiService {
             
         // Re-setup note callbacks for new devices
         this.setupNoteListeners();
+        
+        // Bind LUMI service to the first LUMI input device for SysEx monitoring
+        const lumiInputDevice = this.activeInputs.find(dev => this.isLumiDevice(dev));
+        lumiService.bindMidiIn(lumiInputDevice || null);
     }
 
     setActiveOutputs(deviceIds) {

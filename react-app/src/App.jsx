@@ -323,6 +323,12 @@ function App() {
       audioService.setMasterVolume(newSettings.volume);
     }
     
+    // Update LUMI hardware key setting when key changes
+    if (newSettings.key !== undefined) {
+      console.log(`🎹 Key changed to: ${newSettings.key}, updating LUMI...`);
+      lumiService.setRootKey(newSettings.key);
+    }
+    
     // Update scale highlighting if key changed
     if (newSettings.key) {
       updateScaleHighlighting(newSettings.key);

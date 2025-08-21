@@ -23,25 +23,26 @@ const COLORS = {
   grey: [64, 64, 64]
 };
 
-// Root key commands mapping - all 12 chromatic keys
+// Root key commands mapping - CORRECTED based on actual LUMI desktop app data
+// Format: [0x10, 0x30, key_byte1, key_byte2, 0x00, 0x00, 0x00, 0x00] (8 bytes total)
 const ROOT_KEY_COMMANDS = {
-  'C': [0x10, 0x30, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'C#': [0x10, 0x30, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'Db': [0x10, 0x30, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'D': [0x10, 0x30, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'D#': [0x10, 0x30, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'Eb': [0x10, 0x30, 0x33, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'E': [0x10, 0x30, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'F': [0x10, 0x30, 0x53, 0x00, 0x00, 0x00, 0x00, 0x00],
-  'F#': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'Gb': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'G': [0x10, 0x30, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'G#': [0x10, 0x30, 0x13, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'Ab': [0x10, 0x30, 0x13, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'A': [0x10, 0x30, 0x23, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'A#': [0x10, 0x30, 0x33, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'Bb': [0x10, 0x30, 0x33, 0x01, 0x00, 0x00, 0x00, 0x00],
-  'B': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00]
+  'C': [0x10, 0x30, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00],   // From actual data
+  'C#': [0x10, 0x30, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00],  // From actual data  
+  'Db': [0x10, 0x30, 0x23, 0x00, 0x00, 0x00, 0x00, 0x00],  // Same as C#
+  'D': [0x10, 0x30, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00],   // Inferred pattern
+  'D#': [0x10, 0x30, 0x63, 0x00, 0x00, 0x00, 0x00, 0x00],  // Inferred pattern
+  'Eb': [0x10, 0x30, 0x63, 0x00, 0x00, 0x00, 0x00, 0x00],  // Same as D#
+  'E': [0x10, 0x30, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00],   // Inferred pattern
+  'F': [0x10, 0x30, 0x23, 0x01, 0x00, 0x00, 0x00, 0x00],   // Inferred pattern
+  'F#': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],  // Inferred pattern
+  'Gb': [0x10, 0x30, 0x43, 0x01, 0x00, 0x00, 0x00, 0x00],  // Same as F#
+  'G': [0x10, 0x30, 0x63, 0x01, 0x00, 0x00, 0x00, 0x00],   // From actual data
+  'G#': [0x10, 0x30, 0x03, 0x02, 0x00, 0x00, 0x00, 0x00],  // Inferred pattern
+  'Ab': [0x10, 0x30, 0x03, 0x02, 0x00, 0x00, 0x00, 0x00],  // Same as G#
+  'A': [0x10, 0x30, 0x23, 0x02, 0x00, 0x00, 0x00, 0x00],   // Inferred pattern
+  'A#': [0x10, 0x30, 0x43, 0x02, 0x00, 0x00, 0x00, 0x00],  // Inferred pattern
+  'Bb': [0x10, 0x30, 0x43, 0x02, 0x00, 0x00, 0x00, 0x00],  // Same as A#
+  'B': [0x10, 0x30, 0x63, 0x02, 0x00, 0x00, 0x00, 0x00]    // From actual data
 };
 
 const BRIGHTNESS_MAP = {
@@ -55,18 +56,24 @@ const BRIGHTNESS_MAP = {
 // Helper functions
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v | 0));
 
-function lumiChecksum(cmd8) {
-  if (!Array.isArray(cmd8) || cmd8.length !== 8) {
-    throw new Error('lumiChecksum: cmd8 must be an array of 8 bytes');
+function lumiChecksum(cmd) {
+  if (!Array.isArray(cmd)) {
+    throw new Error('lumiChecksum: cmd must be an array');
   }
-  let c = cmd8.length;
-  for (const b of cmd8) c = (c * 3 + (b & 0x7F)) & 0xFF;
+  let c = cmd.length;
+  for (const b of cmd) c = (c * 3 + (b & 0x7F)) & 0xFF;
   return c & 0x7F;
 }
 
 function buildFrameFromCmd8(cmd8, deviceId = 0x00) {
   const sum = lumiChecksum(cmd8);
   const body = [0x77, deviceId & 0x7F, ...cmd8, sum];
+  return [...MFR, ...body, END];
+}
+
+function buildFrameFromCmd6(cmd6, deviceId = 0x00) {
+  const sum = lumiChecksum(cmd6);
+  const body = [0x77, deviceId & 0x7F, ...cmd6, sum];
   return [...MFR, ...body, END];
 }
 
@@ -139,13 +146,118 @@ function buildScale(scale, deviceId = 0x00) {
 class LumiService {
   constructor() {
     this.midiOut = null;
+    this.midiIn = null;
     this.isLumi = false;
+    this.monitoring = false;
   }
 
   bindMidiOut(out) {
     this.midiOut = out;
     this.isLumi = !!out && /lumi/i.test(out.name);
     console.log(`🔌 LUMI service bound to: ${out?.name || 'null'}, isLumi: ${this.isLumi}`);
+  }
+
+  bindMidiIn(input) {
+    // Remove existing listener if any
+    if (this.midiIn) {
+      this.midiIn.removeListener('sysex');
+      this.midiIn.removeListener('midimessage');
+    }
+    
+    this.midiIn = input;
+    const isLumiInput = !!input && /lumi/i.test(input.name);
+    
+    if (input && isLumiInput) {
+      console.log(`🎧 LUMI MIDI input bound: ${input.name}`);
+      
+      // Listen for SysEx messages
+      input.addListener('sysex', (e) => {
+        if (this.monitoring) {
+          this.logSysExMessage('IN', Array.from(e.data));
+        }
+      });
+      
+      // Also listen for all MIDI messages to catch any we might miss
+      input.addListener('midimessage', (e) => {
+        const data = Array.from(e.data);
+        // Only log SysEx messages (start with 0xF0)
+        if (this.monitoring && data[0] === 0xF0) {
+          this.logSysExMessage('IN', data);
+        }
+      });
+    } else {
+      console.log(`🎧 MIDI input bound: ${input?.name || 'null'} (not LUMI)`);
+    }
+  }
+
+  startMonitoring() {
+    this.monitoring = true;
+    console.log('🎧 Started MIDI SysEx monitoring - change keys in LUMI desktop app now!');
+  }
+
+  stopMonitoring() {
+    this.monitoring = false;
+    console.log('🎧 Stopped MIDI SysEx monitoring');
+  }
+
+  logSysExMessage(direction, data) {
+    const hex = data.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+    const timestamp = new Date().toLocaleTimeString();
+    console.log(`📡 [${timestamp}] ${direction} SysEx: ${hex}`);
+    
+    // Try to decode if it looks like a LUMI message
+    if (data.length >= 6 && 
+        data[0] === 0xF0 && 
+        data[1] === 0x00 && data[2] === 0x21 && data[3] === 0x10) {
+      this.decodeLumiMessage(data);
+    }
+  }
+
+  decodeLumiMessage(data) {
+    if (data.length < 10) return;
+    
+    const messageType = data[4];
+    const deviceId = data[5];
+    const command = data.slice(6, -2); // All bytes except checksum and F7
+    const checksum = data[data.length - 2];
+    
+    console.log(`🔍 LUMI decode: msgType=0x${messageType.toString(16)}, device=0x${deviceId.toString(16)}, checksum=0x${checksum.toString(16)}`);
+    console.log(`🔍 Command bytes (${command.length}): ${command.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}`);
+    
+    // Try to identify the command type
+    if (command[0] === 0x10 && command[1] === 0x30) {
+      console.log('🔑 This looks like a KEY SETTING command!');
+      this.identifyKeyCommand(command);
+    } else if (command[0] === 0x10 && command[1] === 0x60) {
+      console.log('🎵 This looks like a SCALE SETTING command!');
+      this.identifyScaleCommand(command);
+    } else if (command[0] === 0x10 && command[1] === 0x40) {
+      console.log('🔧 This looks like a MODE/BRIGHTNESS command!');
+    }
+  }
+
+  identifyKeyCommand(command) {
+    // Find matching key in our ROOT_KEY_COMMANDS
+    for (const [key, cmd] of Object.entries(ROOT_KEY_COMMANDS)) {
+      if (JSON.stringify(command) === JSON.stringify(cmd)) {
+        console.log(`🎯 MATCHED KEY: ${key}`);
+        return;
+      }
+    }
+    console.log('❓ Key command not found in our mapping');
+    console.log('📝 Please tell me what key this represents so I can update the mapping!');
+    console.log(`💾 Command to add: [${command.map(b => '0x' + b.toString(16).padStart(2, '0')).join(', ')}]`);
+  }
+
+  identifyScaleCommand(command) {
+    // Find matching scale in our SCALE_COMMANDS
+    for (const [scale, cmd] of Object.entries(SCALE_COMMANDS)) {
+      if (JSON.stringify(command) === JSON.stringify(cmd)) {
+        console.log(`🎯 MATCHED SCALE: ${scale}`);
+        return;
+      }
+    }
+    console.log('❓ Scale command not found in our mapping');
   }
 
   setKeyColor(note, color) {
@@ -231,7 +343,7 @@ class LumiService {
     }
 
     try {
-      const frame = buildFrameFromCmd8(command);
+      const frame = buildFrameFromCmd8(command); // Back to 8-byte command format
       console.log(`🎹 Setting LUMI root key to: ${rootNote}`);
       console.log(`📤 Sending SysEx frame:`, frame.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
       this.midiOut.send(frame);
@@ -439,6 +551,50 @@ class LumiService {
   testBrightness(level) {
     console.log(`💡 Testing brightness: ${level}`);
     this.setBrightness(level);
+  }
+
+  // Convenience methods for console testing
+  monitor() {
+    this.startMonitoring();
+  }
+
+  stopmon() {
+    this.stopMonitoring();
+  }
+
+  // Test our key setting vs what desktop app sends
+  testKeyCompare(keyName) {
+    console.log(`🧪 Testing key setting for: ${keyName}`);
+    this.setRootKey(keyName + '-major');
+  }
+
+  // Parse raw hex data from debug output
+  parseDebugData(hexString) {
+    console.log('🔍 Parsing debug data:', hexString);
+    const bytes = hexString.trim().split(/\s+/).map(h => parseInt(h.replace(/[^0-9A-Fa-f]/g, ''), 16));
+    
+    // Look for complete SysEx messages (F0 ... F7)
+    const messages = [];
+    let start = -1;
+    
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i] === 0xF0) {
+        start = i;
+      } else if (bytes[i] === 0xF7 && start !== -1) {
+        messages.push(bytes.slice(start, i + 1));
+        start = -1;
+      }
+    }
+    
+    console.log(`Found ${messages.length} SysEx messages:`);
+    messages.forEach((msg, idx) => {
+      console.log(`Message ${idx + 1}:`, msg.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      if (msg.length >= 6 && msg[0] === 0xF0 && msg[1] === 0x00 && msg[2] === 0x21 && msg[3] === 0x10) {
+        this.decodeLumiMessage(msg);
+      }
+    });
+    
+    return messages;
   }
 }
 
