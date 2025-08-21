@@ -218,9 +218,9 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
                 <button 
                     className="primary" 
                     onClick={onStartPause}
-                    autoFocus={gameState === 'idle'}
+                    autoFocus={gameState === 'idle' || gameState === 'ended'}
                 >
-                    {gameState === 'idle' ? '▶' : '⏸'}
+                    {gameState === 'idle' || gameState === 'ended' ? '▶' : '⏸'}
                 </button>
                 <button className="secondary" onClick={onReplay}>🎵</button>
             </div>

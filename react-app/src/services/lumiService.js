@@ -247,19 +247,8 @@ class LumiService {
     }
   }
 
-  setScaleColors(keySet, low, highExclusive) {
-    if (!this.midiOut || !this.isLumi) return;
-    try {
-      for (let m = low; m < highExclusive; m++) {
-        const inScale = keySet.includes(m % 12);
-        this.setKeyColor(m, inScale ? "brightblue" : "darkred");
-      }
-    } catch (e) {
-      console.warn("Failed to set scale colors:", e);
-    }
-  }
-
-  sendRainbowCelebration(keySet, low, highExclusive, isGameActive = false) {
+  // eslint-disable-next-line no-unused-vars
+  sendRainbowCelebration(keySet, low, highExclusive) {
     if (!this.midiOut || !this.isLumi) return;
     
     // Generate ultra-smooth rainbow spectrum
@@ -331,9 +320,7 @@ class LumiService {
     const keySet = [0, 2, 4, 5, 7, 9, 11]; // C major
     const low = 48; // C3
     const high = 72; // C5
-    // Check if we should end with scale colors (if there's likely a game running)
-    const shouldEndWithScale = true; // For testing, assume we want to see scale colors
-    this.sendRainbowCelebration(keySet, low, high, shouldEndWithScale);
+    this.sendRainbowCelebration(keySet, low, high);
   }
 
   // Test individual color setting

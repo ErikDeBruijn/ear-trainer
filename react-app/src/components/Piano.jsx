@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { rangeToMidi } from '../services/theoryService.js';
 
-function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress }) {
+function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress, isIncorrectAnswer }) {
     // Piano keys with their MIDI note numbers and labels
     const keys = [
         { note: 48, label: 'C3', sharp: false },
@@ -41,8 +41,13 @@ function Piano({ activeNotes, scaleNotes, noteRange, onKeyPress }) {
             classes.push('sharp');
         }
         
+        // Check if this key is currently active and incorrect
         if (activeNotes.has(key.note)) {
-            classes.push('active');
+            if (isIncorrectAnswer && isIncorrectAnswer(key.note)) {
+                classes.push('incorrect');
+            } else {
+                classes.push('active');
+            }
         }
         
         // Only highlight keys that are both in the scale AND in the selected range

@@ -254,16 +254,29 @@ button.secondary { cursor:pointer; }
   color: white !important;
 }
 
-/* Active note highlighting - currently pressed keys */
+/* Active note highlighting - currently pressed keys (correct) */
 #piano-keys .key.active {
-  background: #00ff00 !important; /* Bright green for active */
+  background: #00ff00 !important; /* Bright green for correct */
   color: black !important;
   transform: translateY(2px);
 }
 
 #piano-keys .key.sharp.active {
-  background: #00ff00 !important; /* Bright green for active */
+  background: #00ff00 !important; /* Bright green for correct */
   color: black !important;
+  transform: translateY(2px);
+}
+
+/* Incorrect note highlighting - wrong answers */
+#piano-keys .key.incorrect {
+  background: #ff0000 !important; /* Bright red for incorrect */
+  color: white !important;
+  transform: translateY(2px);
+}
+
+#piano-keys .key.sharp.incorrect {
+  background: #ff0000 !important; /* Bright red for incorrect */
+  color: white !important;
   transform: translateY(2px);
 }
 

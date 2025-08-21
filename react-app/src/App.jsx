@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { midiService } from './services/midiService.js';
 import { audioService } from './services/audioService.js';
 import { gameService } from './services/gameService.js';
@@ -47,7 +47,8 @@ function App() {
     },
     status: '',
     activeNotes: new Set(),
-    scaleNotes: new Set()
+    scaleNotes: new Set(),
+    currentIncorrectNote: null
   });
 
   // Initialize MIDI and load settings
@@ -59,6 +60,7 @@ function App() {
       window.lumiService = lumiService;
       console.log('🔧 Exposed lumiService to window for testing');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeApp = async () => {
@@ -156,10 +158,10 @@ function App() {
           spread: 70,
           origin: { y: 0.6 }
         });
-        // LUMI rainbow celebration with current key and range - game ending (not active)
+        // LUMI rainbow celebration with current key and range
         const keySet = parseKey(currentSettings.key);
         const [low, high] = rangeToMidi(currentSettings.range);
-        lumiService.sendRainbowCelebration(keySet, low, high, false);
+        lumiService.sendRainbowCelebration(keySet, low, high);
       },
       onStateChange: (newState) => {
         setAppState(prev => ({ ...prev, gameState: newState }));
@@ -220,6 +222,11 @@ function App() {
     
     if (isCorrect) {
       console.log(`✅ Correct! Advancing from ${gameService.getState().noteCount - 1} to ${gameService.getState().noteCount}`);
+      // Clear any incorrect note when answer is correct
+      setAppState(prev => ({
+        ...prev,
+        currentIncorrectNote: null
+      }));
       flashScreen('correct');
       lumiService.sendPrimaryGreen(); // Green flash for correct answer
       setTimeout(() => {
@@ -230,6 +237,11 @@ function App() {
       }, 750); // Brief pause before next note
     } else {
       console.log(`❌ Incorrect! Try again.`);
+      // Set the current incorrect note for red feedback
+      setAppState(prev => ({
+        ...prev,
+        currentIncorrectNote: midiNote
+      }));
       flashScreen('incorrect');
       lumiService.sendPrimaryRed(); // Red flash for incorrect answer
       // Reset flag immediately for incorrect answers
@@ -254,32 +266,6 @@ function App() {
     }));
   };
 
-  const autoSelectLumiDevices = () => {
-    const lumiInputs = midiService.inputs.filter(device => midiService.isLumiDevice(device));
-    const lumiOutputs = midiService.outputs.filter(device => midiService.isLumiDevice(device));
-    
-    if (lumiInputs.length > 0 || lumiOutputs.length > 0) {
-      const newInputs = [...appState.midiDevices.selectedInputs];
-      const newOutputs = [...appState.midiDevices.selectedOutputs];
-      
-      lumiInputs.forEach(device => {
-        if (!newInputs.includes(device.id)) {
-          newInputs.push(device.id);
-        }
-      });
-      
-      lumiOutputs.forEach(device => {
-        if (!newOutputs.includes(device.id)) {
-          newOutputs.push(device.id);
-        }
-      });
-      
-      if (newInputs.length !== appState.midiDevices.selectedInputs.length ||
-          newOutputs.length !== appState.midiDevices.selectedOutputs.length) {
-        updateMidiDeviceSelection(newInputs, newOutputs);
-      }
-    }
-  };
 
   const updateMidiDeviceSelection = (inputIds, outputIds) => {
     const prevOutputs = appState.midiDevices.selectedOutputs;
@@ -314,8 +300,7 @@ function App() {
         setTimeout(() => {
           const keySet = parseKey(appState.settings.key);
           const [low, high] = rangeToMidi(appState.settings.range);
-          const isGameActive = appState.gameState !== 'idle';
-          lumiService.sendRainbowCelebration(keySet, low, high, isGameActive);
+          lumiService.sendRainbowCelebration(keySet, low, high);
         }, 500);
       }
     }
@@ -393,6 +378,12 @@ function App() {
   };
 
   const startGame = () => {
+    // Clear any incorrect note feedback when starting new game
+    setAppState(prev => ({
+      ...prev,
+      currentIncorrectNote: null
+    }));
+    
     gameService.start();
     updateGameData();
     
@@ -454,6 +445,10 @@ function App() {
     }, 200);
   };
 
+  const isIncorrectAnswer = (midiNote) => {
+    return appState.currentIncorrectNote === midiNote;
+  };
+
   return (
     <div className="container">
       <Header 
@@ -462,7 +457,7 @@ function App() {
         gameState={appState.gameState}
         onSettingsChange={updateSettings}
         onMidiDeviceChange={updateMidiDeviceSelection}
-        onStartPause={appState.gameState === 'idle' ? startGame : pauseGame}
+        onStartPause={(appState.gameState === 'idle' || appState.gameState === 'ended') ? startGame : pauseGame}
         onReplay={replayNotes}
       />
       
@@ -472,6 +467,7 @@ function App() {
           scaleNotes={appState.scaleNotes}
           noteRange={appState.settings.range}
           onKeyPress={handlePianoKeyPress}
+          isIncorrectAnswer={isIncorrectAnswer}
         />
         
         <HUD 
