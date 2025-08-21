@@ -106,6 +106,16 @@ const MODE_COMMANDS = {
   'night': [0x10, 0x40, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00]    // night mode
 };
 
+// Scale commands based on LUMI protocol documentation
+const SCALE_COMMANDS = {
+  'major': [0x10, 0x60, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00],
+  'minor': [0x10, 0x60, 0x22, 0x00, 0x00, 0x00, 0x00, 0x00],
+  'harmonic-minor': [0x10, 0x60, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00],
+  'chromatic': [0x10, 0x60, 0x42, 0x04, 0x00, 0x00, 0x00, 0x00],
+  'pentatonic-major': [0x10, 0x60, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00],
+  'pentatonic-minor': [0x10, 0x60, 0x22, 0x01, 0x00, 0x00, 0x00, 0x00]
+};
+
 function cmdMode(mode) {
   const cmd = MODE_COMMANDS[String(mode).toLowerCase()];
   if (!cmd) throw new Error(`Unknown mode: ${mode}`);
@@ -114,6 +124,16 @@ function cmdMode(mode) {
 
 function buildMode(mode, deviceId = 0x00) {
   return buildFrameFromCmd8(cmdMode(mode), deviceId);
+}
+
+function cmdScale(scale) {
+  const cmd = SCALE_COMMANDS[String(scale).toLowerCase()];
+  if (!cmd) throw new Error(`Unknown scale: ${scale}`);
+  return cmd.slice();
+}
+
+function buildScale(scale, deviceId = 0x00) {
+  return buildFrameFromCmd8(cmdScale(scale), deviceId);
 }
 
 class LumiService {
@@ -191,10 +211,19 @@ class LumiService {
   }
 
   setRootKey(keySignature) {
-    if (!this.midiOut || !this.isLumi) return;
+    console.log(`🔑 setRootKey called with: ${keySignature}`);
+    console.log(`🔑 midiOut=${!!this.midiOut}, isLumi=${this.isLumi}`);
+    
+    if (!this.midiOut || !this.isLumi) {
+      console.log(`🔑 Early exit: midiOut or isLumi check failed`);
+      return;
+    }
 
     const rootNote = keySignature.split('-')[0];
+    console.log(`🔑 Extracted root note: ${rootNote}`);
+    
     const command = ROOT_KEY_COMMANDS[rootNote];
+    console.log(`🔑 Command for ${rootNote}:`, command);
 
     if (!command) {
       console.warn(`Unknown root key: ${rootNote}`);
@@ -203,7 +232,10 @@ class LumiService {
 
     try {
       const frame = buildFrameFromCmd8(command);
+      console.log(`🎹 Setting LUMI root key to: ${rootNote}`);
+      console.log(`📤 Sending SysEx frame:`, frame.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
       this.midiOut.send(frame);
+      console.log(`✅ LUMI root key set to: ${rootNote}`);
     } catch (e) {
       console.warn("Failed to set root key:", e);
     }
@@ -234,6 +266,45 @@ class LumiService {
     } catch (e) {
       console.warn("Failed to set LUMI mode:", e);
     }
+  }
+
+  setScale(scale) {
+    if (!this.midiOut || !this.isLumi) return;
+
+    try {
+      const frame = buildScale(scale);
+      this.midiOut.send(frame);
+      console.log(`🎵 LUMI scale set to: ${scale}`);
+    } catch (e) {
+      console.warn("Failed to set LUMI scale:", e);
+    }
+  }
+
+  // TODO: Future iteration - separate key and scale configuration
+  // Currently we conflate "G major" as both key=G and scale=major
+  // In future, allow independent key selection (C, D, E, etc.) and scale selection (major, minor, etc.)
+  configureKeyAndScale(keySignature) {
+    if (!this.midiOut || !this.isLumi) {
+      console.log(`❌ Cannot configure LUMI: midiOut=${!!this.midiOut}, isLumi=${this.isLumi}`);
+      return;
+    }
+
+    // Extract key and mode from signature like "G-major"
+    const [rootNote, mode] = keySignature.split('-');
+    
+    console.log(`🎼 Configuring LUMI for ${keySignature}: key=${rootNote}, scale=${mode}`);
+    
+    // Set the key root note
+    console.log(`🔑 About to call setRootKey with: ${keySignature}`);
+    this.setRootKey(keySignature);
+    
+    // Set the scale
+    this.setScale(mode);
+    
+    // Set to single color scale mode for best visibility
+    this.setMode('single');
+    
+    console.log(`✅ LUMI configured for ${keySignature}`);
   }
 
   clearRange(low, highExclusive) {
