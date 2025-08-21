@@ -4,6 +4,7 @@ import { audioService } from './services/audioService.js';
 import { gameService } from './services/gameService.js';
 import { storageService } from './services/storageService.js';
 import { lumiService } from './services/lumiService.js';
+import { analyticsService } from './services/analyticsService.js';
 import { parseKey, rangeToMidi, randomNoteInKey, midiNoteToKeySignature } from './services/theoryService.js';
 import confetti from 'canvas-confetti';
 
@@ -12,14 +13,19 @@ import Piano from './components/Piano.jsx';
 import HUD from './components/HUD.jsx';
 import ProgressBar from './components/ProgressBar.jsx';
 import Status from './components/Status.jsx';
+import LatestSessions from './components/LatestSessions.jsx';
+import StatsScreen from './components/StatsScreen.jsx';
 
 import './css/styles.css';
 
 function App() {
   // Ref to prevent duplicate answer processing
   const processingAnswerRef = useRef(false);
+  // Ref to track when target note was played (for response time)
+  const targetPlayedTimeRef = useRef(null);
   
   // Core app state
+  const [showStatsScreen, setShowStatsScreen] = useState(false);
   const [appState, setAppState] = useState({
     midiEnabled: false,
     gameState: 'idle',
@@ -57,10 +63,11 @@ function App() {
   useEffect(() => {
     initializeApp();
     
-    // Expose lumiService to window for testing in development
+    // Expose services to window for testing in development
     if (import.meta.env.DEV) {
       window.lumiService = lumiService;
-      console.log('🔧 Exposed lumiService to window for testing');
+      window.analyticsService = analyticsService;
+      console.log('🔧 Exposed lumiService and analyticsService to window for testing');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -139,6 +146,9 @@ function App() {
       },
       onTarget: async (target) => {
         const homeNoteFreq = getHomeNoteFrequency(currentSettings.homeNoteFrequency);
+        // Record when target note is played for response time tracking
+        targetPlayedTimeRef.current = Date.now();
+        
         if (homeNoteFreq > 0) {
           const keySignature = `${currentSettings.rootKey}-${currentSettings.scale}`;
           const keySet = parseKey(keySignature);
@@ -157,6 +167,13 @@ function App() {
       },
       onEnd: (summary) => {
         setStatus(`Session complete! Final score: ${summary.score}`);
+        
+        // End analytics session and save data
+        const sessionData = analyticsService.endSession(summary);
+        if (sessionData) {
+          console.log(`📊 Session saved: ${sessionData.summary.accuracy}% accuracy, ${sessionData.summary.totalNotes} notes`);
+        }
+        
         // Confetti celebration
         confetti({
           particleCount: 100,
@@ -226,6 +243,19 @@ function App() {
     processingAnswerRef.current = true;
     
     const isCorrect = gameService.answer(midiNote);
+    
+    // Calculate response time
+    const responseTime = targetPlayedTimeRef.current ? Date.now() - targetPlayedTimeRef.current : null;
+    
+    // Log attempt to analytics
+    const currentGameState = gameService.getState();
+    analyticsService.logAttempt(
+      currentTarget, 
+      midiNote, 
+      isCorrect, 
+      responseTime,
+      currentGameState.streak
+    );
     
     if (isCorrect) {
       console.log(`✅ Correct! Advancing from ${gameService.getState().noteCount - 1} to ${gameService.getState().noteCount}`);
@@ -404,6 +434,9 @@ function App() {
       currentIncorrectNote: null
     }));
     
+    // Start analytics session
+    analyticsService.startSession(appState.settings);
+    
     gameService.start();
     updateGameData();
     
@@ -469,6 +502,18 @@ function App() {
     return appState.currentIncorrectNote === midiNote;
   };
 
+  const handleViewAllStats = () => {
+    setShowStatsScreen(true);
+  };
+
+  const handleCloseStats = () => {
+    setShowStatsScreen(false);
+  };
+
+  if (showStatsScreen) {
+    return <StatsScreen onClose={handleCloseStats} />;
+  }
+
   return (
     <div className="container">
       <Header 
@@ -505,6 +550,8 @@ function App() {
         
         <Status message={appState.status} />
       </section>
+      
+      <LatestSessions onViewAll={handleViewAllStats} />
       
       <div id="overlay-flash" aria-hidden="true"></div>
     </div>

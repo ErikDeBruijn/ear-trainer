@@ -59,7 +59,7 @@ function Header({ settings, midiDevices, gameState, onSettingsChange, onMidiDevi
 
     return (
         <header>
-            <div className="title">Ear Trainer — v1.0</div>
+            <div className="title">Ear Trainer — v1.1</div>
             <div className="settings-section">
                 <button className="settings-toggle" onClick={toggleSettings}>
                     <span className="settings-toggle-text">Settings</span>
