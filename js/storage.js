@@ -21,14 +21,19 @@ export const store = {
         return data.dailyPracticeTime || 0;
     },
     
-    saveDailyPracticeTime(seconds) {
+    addDailyPracticeTime(additionalSeconds) {
         const data = this.load();
         const today = getTodayString();
+        
+        let currentTime = 0;
+        if (data.practiceDate === today) {
+            currentTime = data.dailyPracticeTime || 0;
+        }
         
         this.save({
             ...data,
             practiceDate: today,
-            dailyPracticeTime: seconds
+            dailyPracticeTime: currentTime + additionalSeconds
         });
     }
 };

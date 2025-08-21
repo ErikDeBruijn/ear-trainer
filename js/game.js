@@ -13,7 +13,7 @@ export class Game {
     }
     reset() {
         this.score = 0; this.streak = 0; this.correct = 0; this.attempts = 0;
-        this.practiceTime = store.getDailyPracticeTime(); this.target = null; this.noteCount = 0;
+        this.sessionTime = 0; this.target = null; this.noteCount = 0;
         this.responseTimes = []; this.targetStartTime = null;
     }
     start() {
@@ -23,10 +23,11 @@ export class Game {
     }
     pause() { if (this.timer) clearInterval(this.timer); this.state = "paused"; }
     tick() {
-        this.practiceTime += 1; 
-        store.saveDailyPracticeTime(this.practiceTime);
-        const minutes = Math.floor(this.practiceTime / 60);
-        const seconds = this.practiceTime % 60;
+        this.sessionTime += 1; 
+        store.addDailyPracticeTime(1);
+        const totalTime = store.getDailyPracticeTime();
+        const minutes = Math.floor(totalTime / 60);
+        const seconds = totalTime % 60;
         const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         this.onTick(timeString);
     }
