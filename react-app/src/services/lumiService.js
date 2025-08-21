@@ -64,7 +64,7 @@ function lumiChecksum(cmd8) {
   return c & 0x7F;
 }
 
-function buildFrameFromCmd8(cmd8, deviceId = 0x37) {
+function buildFrameFromCmd8(cmd8, deviceId = 0x00) {
   const sum = lumiChecksum(cmd8);
   const body = [0x77, deviceId & 0x7F, ...cmd8, sum];
   return [...MFR, ...body, END];
@@ -90,11 +90,11 @@ function cmdBrightness(level) {
   return b.slice();
 }
 
-function buildPrimaryRGB(r, g, b, deviceId = 0x37) {
+function buildPrimaryRGB(r, g, b, deviceId = 0x00) {
   return buildFrameFromCmd8(cmdPrimaryRGB(r, g, b), deviceId);
 }
 
-function buildBrightness(level, deviceId = 0x37) {
+function buildBrightness(level, deviceId = 0x00) {
   return buildFrameFromCmd8(cmdBrightness(level), deviceId);
 }
 
@@ -112,7 +112,7 @@ function cmdMode(mode) {
   return cmd.slice();
 }
 
-function buildMode(mode, deviceId = 0x37) {
+function buildMode(mode, deviceId = 0x00) {
   return buildFrameFromCmd8(cmdMode(mode), deviceId);
 }
 
@@ -247,68 +247,144 @@ class LumiService {
     }
   }
 
-  sendRainbowCelebration() {
+  setScaleColors(keySet, low, highExclusive) {
+    if (!this.midiOut || !this.isLumi) return;
+    try {
+      for (let m = low; m < highExclusive; m++) {
+        const inScale = keySet.includes(m % 12);
+        this.setKeyColor(m, inScale ? "brightblue" : "darkred");
+      }
+    } catch (e) {
+      console.warn("Failed to set scale colors:", e);
+    }
+  }
+
+  sendRainbowCelebration(keySet, low, highExclusive, isGameActive = false) {
     if (!this.midiOut || !this.isLumi) return;
     
-    console.log('🌈 Starting rainbow celebration on LUMI');
+    // Generate ultra-smooth rainbow spectrum
+    const rainbowColors = [];
+    const steps = 32;
     
-    // Brighter, more vibrant rainbow colors
-    const rainbowColors = [
-      [255, 0, 0],      // Red
-      [255, 165, 0],    // Orange  
-      [255, 255, 0],    // Yellow
-      [0, 255, 0],      // Green
-      [0, 100, 255],    // Blue
-      [138, 43, 226],   // Violet
-      [255, 20, 147]    // Deep Pink
-    ];
+    for (let i = 0; i < steps; i++) {
+      const hue = (i / steps) * 360;
+      const [r, g, b] = this.hslToRgb(hue / 360, 1, 0.6);
+      rainbowColors.push([Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]);
+    }
     
     let colorIndex = 0;
-    const totalFlashes = rainbowColors.length * 2; // 2 complete cycles
+    const totalFlashes = rainbowColors.length * 3;
     
-    console.log(`🌈 Will flash ${totalFlashes} colors (${rainbowColors.length} colors × 2 cycles)`);
-    
-    // Flash through rainbow colors immediately, then continue with interval
     const flashColor = () => {
       if (colorIndex >= totalFlashes) {
-        console.log('🌈 All colors flashed, finishing celebration');
-        // Return to normal bright blue after celebration
-        setTimeout(() => {
-          console.log('🌈 Returning to bright blue');
-          this.sendPrimaryColor(0, 1, 255); // Bright blue
-          console.log('🌈 Rainbow celebration finished, back to normal mode');
-        }, 300);
+        // End with appropriate color based on game state
+        if (isGameActive) {
+          // Game is active - return to scale highlighting
+          this.setScaleColors(keySet, low, highExclusive);
+        } else {
+          // Game is idle - turn off lights (black)
+          this.sendPrimaryColor(0, 0, 0);
+        }
         return;
       }
       
       const [r, g, b] = rainbowColors[colorIndex % rainbowColors.length];
-      console.log(`🌈 Flash ${colorIndex + 1}/${totalFlashes}: RGB(${r}, ${g}, ${b})`);
       
       try {
-        // Use primary color for dramatic effect across whole keyboard
         this.sendPrimaryColor(r, g, b);
-        console.log(`✅ Color sent successfully`);
       } catch (e) {
         console.warn("❌ Failed to send rainbow color:", e);
       }
       
       colorIndex++;
       
-      // Schedule next color
-      if (colorIndex < totalFlashes) {
-        setTimeout(flashColor, 600); // 600ms between colors
-      } else {
-        // All done, finish
-        setTimeout(() => {
-          console.log('🌈 Returning to bright blue');
-          this.sendPrimaryColor(0, 1, 255);
-          console.log('🌈 Rainbow celebration finished, back to normal mode');
-        }, 300);
-      }
+      // Faster for even smoother effect!
+      setTimeout(flashColor, 40); // 40ms = buttery smooth 25fps
     };
     
-    // Start the color sequence
     flashColor();
+  }
+
+  // Helper function to convert HSL to RGB
+  hslToRgb(h, s, l) {
+    let r, g, b;
+
+    if (s === 0) {
+      r = g = b = l; // achromatic
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+
+    return [r, g, b];
+  }
+
+  // Manual test function - call from console
+  testRainbow() {
+    // Use C major scale and C3-B4 range as defaults
+    const keySet = [0, 2, 4, 5, 7, 9, 11]; // C major
+    const low = 48; // C3
+    const high = 72; // C5
+    this.sendRainbowCelebration(keySet, low, high, false); // Test as if game is idle
+  }
+
+  // Test individual color setting
+  testSingleColor(note, color) {
+    console.log(`🎨 Testing single color: note ${note}, color ${color}`);
+    this.setKeyColor(note, color);
+  }
+
+  // Test primary color (whole keyboard)
+  testPrimaryColor(r, g, b) {
+    console.log(`🎨 Testing primary color: RGB(${r}, ${g}, ${b})`);
+    this.sendPrimaryColor(r, g, b);
+  }
+
+  // Test all available colors on a single note
+  testAllColors(note = 60) {
+    console.log(`🌈 Testing all colors on note ${note}`);
+    const colors = Object.keys(COLORS);
+    let colorIndex = 0;
+    
+    const testColor = () => {
+      if (colorIndex >= colors.length) {
+        console.log('✅ All colors tested');
+        return;
+      }
+      
+      const color = colors[colorIndex];
+      console.log(`Testing color ${colorIndex + 1}/${colors.length}: ${color}`);
+      this.setKeyColor(note, color);
+      colorIndex++;
+      
+      setTimeout(testColor, 1000); // 1 second between colors
+    };
+    
+    testColor();
+  }
+
+  // Test mode switching
+  testMode(mode) {
+    console.log(`🔧 Testing mode: ${mode}`);
+    this.setMode(mode);
+  }
+
+  // Test brightness
+  testBrightness(level) {
+    console.log(`💡 Testing brightness: ${level}`);
+    this.setBrightness(level);
   }
 }
 

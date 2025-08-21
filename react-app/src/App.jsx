@@ -53,6 +53,12 @@ function App() {
   // Initialize MIDI and load settings
   useEffect(() => {
     initializeApp();
+    
+    // Expose lumiService to window for testing in development
+    if (import.meta.env.DEV) {
+      window.lumiService = lumiService;
+      console.log('🔧 Exposed lumiService to window for testing');
+    }
   }, []);
 
   const initializeApp = async () => {
@@ -150,8 +156,10 @@ function App() {
           spread: 70,
           origin: { y: 0.6 }
         });
-        // LUMI rainbow celebration
-        lumiService.sendRainbowCelebration();
+        // LUMI rainbow celebration with current key and range - game ending (not active)
+        const keySet = parseKey(currentSettings.key);
+        const [low, high] = rangeToMidi(currentSettings.range);
+        lumiService.sendRainbowCelebration(keySet, low, high, false);
       },
       onStateChange: (newState) => {
         setAppState(prev => ({ ...prev, gameState: newState }));
@@ -274,6 +282,8 @@ function App() {
   };
 
   const updateMidiDeviceSelection = (inputIds, outputIds) => {
+    const prevOutputs = appState.midiDevices.selectedOutputs;
+    
     midiService.setActiveInputs(inputIds);
     midiService.setActiveOutputs(outputIds);
     storageService.saveMidiInputs(inputIds);
@@ -289,6 +299,25 @@ function App() {
     }));
     
     setupMidiListeners();
+    
+    // Trigger rainbow celebration when LUMI device is newly connected as output
+    if (outputIds.length > prevOutputs.length) {
+      const newOutputIds = outputIds.filter(id => !prevOutputs.includes(id));
+      const newLumiOutputs = newOutputIds.filter(id => {
+        const device = midiService.outputs.find(d => d.id === id);
+        return device && midiService.isLumiDevice(device);
+      });
+      
+      if (newLumiOutputs.length > 0) {
+        console.log('🌈 LUMI device connected! Triggering welcome rainbow...');
+        // Small delay to ensure LUMI service is properly bound
+        setTimeout(() => {
+          const keySet = parseKey(appState.settings.key);
+          const [low, high] = rangeToMidi(appState.settings.range);
+          lumiService.sendRainbowCelebration(keySet, low, high, false);
+        }, 500);
+      }
+    }
   };
 
   const updateSettings = (newSettings) => {
