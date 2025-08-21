@@ -125,6 +125,10 @@ class MidiService {
             dev.manufacturer && dev.manufacturer.match(/ROLI/i)
         );
         this.out = roliDevice || this.activeOutputs[0] || null;
+        
+        // Bind LUMI service to the first LUMI device
+        const lumiDevice = this.activeOutputs.find(dev => this.isLumiDevice(dev));
+        lumiService.bindMidiOut(lumiDevice || null);
     }
 
     // Check if device is a LUMI/ROLI device for auto-selection

@@ -3,6 +3,7 @@ import { midiService } from './services/midiService.js';
 import { audioService } from './services/audioService.js';
 import { gameService } from './services/gameService.js';
 import { storageService } from './services/storageService.js';
+import { lumiService } from './services/lumiService.js';
 import { parseKey, rangeToMidi, randomNoteInKey, midiNoteToKeySignature } from './services/theoryService.js';
 import confetti from 'canvas-confetti';
 
@@ -209,6 +210,7 @@ function App() {
     if (isCorrect) {
       console.log(`✅ Correct! Advancing from ${gameService.getState().noteCount - 1} to ${gameService.getState().noteCount}`);
       flashScreen('correct');
+      lumiService.sendPrimaryGreen(); // Green flash for correct answer
       setTimeout(() => {
         gameService.nextRound();
         updateGameData();
@@ -218,6 +220,7 @@ function App() {
     } else {
       console.log(`❌ Incorrect! Try again.`);
       flashScreen('incorrect');
+      lumiService.sendPrimaryRed(); // Red flash for incorrect answer
       // Reset flag immediately for incorrect answers
       processingAnswerRef.current = false;
     }
