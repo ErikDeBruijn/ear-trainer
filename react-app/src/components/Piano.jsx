@@ -48,6 +48,8 @@ function Piano({ activeNotes, scaleNotes, onKeyPress }) {
             classes.push('in-scale');
         }
         
+        // Don't show target note - this is ear training, not visual training!
+        
         return classes.join(' ');
     };
 

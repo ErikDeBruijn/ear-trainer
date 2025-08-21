@@ -39,6 +39,7 @@ export class GameService {
         this.responseTimes = []; 
         this.targetStartTime = null;
         this.practiceTarget = 10; // Default target
+        this.currentTargetHadError = false; // Track if current target already had an incorrect attempt
     }
     
     setPracticeTarget(target) {
@@ -91,6 +92,7 @@ export class GameService {
         }
         
         this.noteCount++;
+        this.currentTargetHadError = false; // Reset error flag for new target
         if (this.callbacks.pickNote) {
             this.target = this.callbacks.pickNote();
             this.targetStartTime = Date.now();
@@ -101,7 +103,6 @@ export class GameService {
     
     answer(midi) {
         if (this.state !== "prompt" && this.state !== "await") return false;
-        this.attempts++;
         
         // Calculate response time
         const responseTime = this.targetStartTime ? Date.now() - this.targetStartTime : 0;
@@ -113,12 +114,18 @@ export class GameService {
         }
         
         if (ok) { 
+            this.attempts++; // Count this attempt
             this.correct++; 
             // Base score + time bonus (faster = higher bonus)
             const timeBonus = Math.max(0, Math.floor((2000 - responseTime) / 100));
             this.score += 10 + timeBonus;
             this.streak++; 
         } else { 
+            // Only count as an attempt if this target hasn't had an error yet
+            if (!this.currentTargetHadError) {
+                this.attempts++;
+                this.currentTargetHadError = true;
+            }
             this.score = Math.max(0, this.score - 5); 
             this.streak = 0; 
         }

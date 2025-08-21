@@ -243,6 +243,32 @@ button.secondary { cursor:pointer; }
   transform: translateY(2px);
 }
 
+/* Scale highlighting - bright blue for notes in current key */
+#piano-keys .key.in-scale {
+  background: #0088ff !important; /* Bright blue */
+  color: white !important;
+}
+
+#piano-keys .key.sharp.in-scale {
+  background: #0088ff !important; /* Bright blue */
+  color: white !important;
+}
+
+/* Active note highlighting - currently pressed keys */
+#piano-keys .key.active {
+  background: #00ff00 !important; /* Bright green for active */
+  color: black !important;
+  transform: translateY(2px);
+}
+
+#piano-keys .key.sharp.active {
+  background: #00ff00 !important; /* Bright green for active */
+  color: black !important;
+  transform: translateY(2px);
+}
+
+/* Target note highlighting removed - ear training should use ears, not eyes! */
+
 /* MIDI Input Selector */
 .midi-input-selector {
   position: relative;
